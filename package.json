@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
-    "pdfjs-dist": "^4.10.38",
+    "pdfjs-dist": "4.8.69",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-markdown": "^9.0.3",
