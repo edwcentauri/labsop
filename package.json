@@ -1,0 +1,34 @@
+{
+  "name": "labsop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ignore-pattern dist",
+    "test": "vitest run",
+    "generate:pdfs": "node scripts/generate-demo-pdfs.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "pdfjs-dist": "^4.10.38",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-markdown": "^9.0.3",
+    "react-pdf": "^9.2.1",
+    "react-router-dom": "^7.1.1",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "eslint": "9.39.4",
+    "typescript": "5.9.3",
+    "vite": "8.0.13",
+    "vitest": "^3.0.5"
+  },
+  "type": "module"
+}
