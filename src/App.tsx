@@ -9,7 +9,10 @@ import {
   FileText,
   FlaskConical,
   Info,
+  Laptop,
+  Moon,
   Search,
+  Sun,
   X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -20,6 +23,55 @@ import { announcements, sops, type SopEntry } from './data';
 
 const PdfViewer = lazy(() => import('./PdfViewer'));
 const latestAnnouncementDate = announcements[0].date;
+type ThemePreference = 'light' | 'dark' | 'auto';
+
+const themeOptions = [
+  { value: 'light' as const, label: '浅色', Icon: Sun },
+  { value: 'dark' as const, label: '深色', Icon: Moon },
+  { value: 'auto' as const, label: '自动', Icon: Laptop },
+];
+
+function ThemeSwitcher() {
+  const [preference, setPreference] = useState<ThemePreference>(() => {
+    const saved = localStorage.getItem('labsop:theme');
+    return saved === 'light' || saved === 'dark' || saved === 'auto' ? saved : 'auto';
+  });
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const resolvedTheme = preference === 'auto' ? (media.matches ? 'dark' : 'light') : preference;
+      document.documentElement.dataset.theme = resolvedTheme;
+      document.documentElement.dataset.themePreference = preference;
+      document.documentElement.style.colorScheme = resolvedTheme;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolvedTheme === 'dark' ? '#0d1716' : '#0f766e');
+    };
+
+    localStorage.setItem('labsop:theme', preference);
+    applyTheme();
+    media.addEventListener('change', applyTheme);
+    return () => media.removeEventListener('change', applyTheme);
+  }, [preference]);
+
+  return (
+    <div className="theme-switcher" role="group" aria-label="颜色主题">
+      {themeOptions.map(({ value, label, Icon }) => (
+        <button
+          type="button"
+          key={value}
+          className={preference === value ? 'active' : ''}
+          aria-label={`${label}模式`}
+          aria-pressed={preference === value}
+          title={`${label}模式`}
+          onClick={() => setPreference(value)}
+        >
+          <Icon size={15} aria-hidden="true" />
+          <span>{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function AppHeader({ onOpenAnnouncements, hasUnread }: { onOpenAnnouncements: () => void; hasUnread: boolean }) {
   return (
@@ -28,10 +80,13 @@ function AppHeader({ onOpenAnnouncements, hasUnread }: { onOpenAnnouncements: ()
         <span className="brand-mark">LS</span>
         <span><strong>Lab SOP</strong><small>实验室操作中心</small></span>
       </Link>
-      <button className="icon-button notification-button" onClick={onOpenAnnouncements} aria-label="查看公告">
-        <Bell size={21} />
-        {hasUnread && <span className="notification-dot" />}
-      </button>
+      <div className="header-actions">
+        <ThemeSwitcher />
+        <button className="icon-button notification-button" onClick={onOpenAnnouncements} aria-label="查看公告">
+          <Bell size={21} />
+          {hasUnread && <span className="notification-dot" />}
+        </button>
+      </div>
     </header>
   );
 }
