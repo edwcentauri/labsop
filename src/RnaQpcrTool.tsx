@@ -42,10 +42,6 @@ type ToolTab = 'setup' | 'guide' | 'plate' | 'distribution';
 type PlateMode = 'auto' | 'manual';
 type PlateFullscreenMode = 'none' | 'native' | 'fallback';
 
-type LockableScreenOrientation = ScreenOrientation & {
-  lock?: (orientation: 'landscape') => Promise<void>;
-};
-
 type ManualWell = {
   primer?: string;
   sample?: string;
@@ -190,12 +186,12 @@ function IntegerStepper({
   );
 }
 
-function fittedWellFontSize(value: string, maximumSize: number): string {
+function fittedWellFontSize(value: string, minimumSize: number, maximumSize: number): string {
   const widthUnits = Array.from(value).reduce(
     (total, character) => total + ((character.codePointAt(0) ?? 0) > 255 ? 1 : 0.55),
     0,
   );
-  return `${Math.min(maximumSize, 34 / Math.max(widthUnits, 1))}px`;
+  return `${Math.max(minimumSize, Math.min(maximumSize, 40 / Math.max(widthUnits, 1)))}px`;
 }
 
 function usePlateFullscreen() {
@@ -211,7 +207,6 @@ function usePlateFullscreen() {
         setFullscreenMode('native');
       } else if (nativeFullscreenActive.current) {
         nativeFullscreenActive.current = false;
-        screen.orientation?.unlock();
         setFullscreenMode('none');
       }
     };
@@ -219,7 +214,6 @@ function usePlateFullscreen() {
     document.addEventListener('fullscreenchange', syncFullscreenState);
     return () => {
       document.removeEventListener('fullscreenchange', syncFullscreenState);
-      if (nativeFullscreenActive.current) screen.orientation?.unlock();
     };
   }, []);
 
@@ -260,8 +254,6 @@ function usePlateFullscreen() {
       return;
     }
 
-    const orientation = screen.orientation as LockableScreenOrientation | undefined;
-    if (orientation?.lock) await orientation.lock('landscape').catch(() => undefined);
   };
 
   return { cardRef, isFullscreen, fullscreenMode, toggleFullscreen };
@@ -994,7 +986,7 @@ function PlateView({ plate }: { plate: NonNullable<ReturnType<typeof createQpcrP
               const assignment = assignments.get(wellName);
               return (
                 <div key={wellName} className={`plate-well ${assignment ? `filled color-${assignment.colorIndex % 6}` : ''} ${assignment?.isNtc ? 'ntc' : ''}`} title={assignment ? `${assignment.well} · 引物：${assignment.primer} · 样本：${assignment.sample}` : wellName}>
-                  {assignment && <><span><i>样</i><b style={{ fontSize: fittedWellFontSize(assignment.sample, 8) }}>{assignment.sample}</b></span><small><i>引</i><b style={{ fontSize: fittedWellFontSize(assignment.primer, 7) }}>{assignment.primer}</b></small></>}
+                  {assignment && <><span><i>样</i><b style={{ fontSize: fittedWellFontSize(assignment.sample, 9, 11) }}>{assignment.sample}</b></span><small><i>引</i><b style={{ fontSize: fittedWellFontSize(assignment.primer, 8, 10) }}>{assignment.primer}</b></small></>}
                 </div>
               );
             }),
@@ -1056,7 +1048,7 @@ function ManualPlateView({
                   disabled={isFullscreen}
                   onClick={() => onWellClick(wellName)}
                 >
-                  {assignment && <><span><i>样</i><b style={{ fontSize: fittedWellFontSize(assignment.sample ?? '未设置', 8) }}>{assignment.sample ?? '未设置'}</b></span><small><i>引</i><b style={{ fontSize: fittedWellFontSize(assignment.primer ?? '未设置', 7) }}>{assignment.primer ?? '未设置'}</b></small></>}
+                  {assignment && <><span><i>样</i><b style={{ fontSize: fittedWellFontSize(assignment.sample ?? '未设置', 9, 11) }}>{assignment.sample ?? '未设置'}</b></span><small><i>引</i><b style={{ fontSize: fittedWellFontSize(assignment.primer ?? '未设置', 8, 10) }}>{assignment.primer ?? '未设置'}</b></small></>}
                 </button>
               );
             }),
