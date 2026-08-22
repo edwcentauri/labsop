@@ -75,11 +75,11 @@ export type RnaLoadingResult = {
 
 export function calculateRnaLoading(
   concentrationNgPerUl: number,
-  systemVolume: ReverseTranscriptionSystem,
 ): RnaLoadingResult | null {
   if (concentrationNgPerUl <= 0) return null;
 
   const rnaVolume = 1000 / concentrationNgPerUl;
+  const systemVolume: ReverseTranscriptionSystem = rnaVolume <= 8 ? 10 : 16;
   const waterVolume = systemVolume - 2 - rnaVolume;
   if (waterVolume < 0) return null;
 
