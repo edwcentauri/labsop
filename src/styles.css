@@ -365,15 +365,16 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .setup-sticky-action button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 220px; min-height: 50px; padding: 0 20px; border: 0; border-radius: 14px; color: white; background: linear-gradient(135deg, #0a514b, #0f766e); box-shadow: 0 12px 28px #0f766e40; font-size: 12px; font-weight: 750; cursor: pointer; pointer-events: auto; }
 .setup-sticky-action button:hover { background: linear-gradient(135deg, #084941, #0d6b64); }
 
-.guide-progress { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid #e8efec; }
+.guide-progress { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; min-height: 30px; padding-bottom: 10px; border-bottom: 1px solid #e8efec; }
 .guide-progress > div:first-child { display: flex; align-items: baseline; gap: 7px; }
 .guide-progress > div:first-child span { color: #778985; font-size: 10px; }
 .guide-progress > div:first-child strong { font-size: 12px; }
 .guide-progress > div:first-child small { color: #a06c21; font-size: 8px; font-weight: 650; white-space: nowrap; }
-.progress-track { height: 7px; overflow: hidden; border-radius: 999px; background: #e8efed; }
+.guide-progress > .progress-track { position: absolute; right: 0; bottom: -1px; left: 0; height: 3px; }
+.progress-track { height: 5px; overflow: hidden; border-radius: 999px; background: #e8efed; }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: #19a092; transition: width .2s ease; }
 .page-dots { display: flex; gap: 5px; }
-.page-dots button { width: 29px; height: 29px; border: 1px solid #d7e4e0; border-radius: 50%; color: #748783; background: white; font-size: 10px; cursor: pointer; }
+.page-dots button { width: 27px; height: 27px; padding: 0; border: 1px solid #d7e4e0; border-radius: 50%; color: #748783; background: white; font-size: 9px; cursor: pointer; }
 .page-dots button.active { color: white; border-color: #0f766e; background: #0f766e; }
 .guide-heading { padding: 30px 0 22px; }
 .guide-heading h2 { margin: 6px 0 0; font-size: 30px; letter-spacing: -.04em; }
@@ -449,6 +450,22 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .guide-pagination button:last-child { justify-self: end; width: 100%; }
 .guide-pagination button:disabled { opacity: .35; cursor: not-allowed; }
 .guide-pagination span { color: #7a8d89; font-size: 10px; }
+.guide-floating-pagination {
+  position: fixed; right: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 35;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 7px;
+  width: min(calc(100% - 24px), 520px); min-height: 42px; padding: 6px 7px 5px;
+  border: 1px solid #d4e2de; border-radius: 15px; background: #fffffff2;
+  box-shadow: 0 12px 36px #173f3829; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transform: translateX(50%);
+}
+.guide-floating-pagination > .progress-track { position: absolute; top: 0; right: 10px; left: 10px; height: 2px; }
+.guide-floating-pagination > button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-height: 30px; padding: 0 8px;
+  border: 0; border-radius: 9px; color: #0d6d65; background: #edf7f4; font-size: 9px; font-weight: 700; cursor: pointer;
+}
+.guide-floating-pagination > button:disabled { opacity: .32; cursor: not-allowed; }
+.guide-floating-pagination .page-dots { justify-content: center; gap: 4px; }
+.guide-floating-pagination .page-dots button { width: 26px; height: 26px; }
 
 .formula-warning { display: flex; align-items: flex-start; gap: 10px; margin-top: 18px; padding: 14px 16px; border: 1px solid #e6cf9c; border-radius: 13px; color: #725b2d; background: #fff9e9; }
 .formula-warning svg { flex: 0 0 auto; margin-top: 2px; }
@@ -549,8 +566,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .manual-toolbar-actions { grid-column: 1 / -1; }
   .setup-grid { grid-template-columns: 1fr; }
   .run-options { grid-template-columns: 1fr 1fr; }
-  .guide-progress { grid-template-columns: auto 1fr; }
-  .page-dots { grid-column: 1 / -1; }
+  .guide-progress > div:first-child small { display: none; }
   .embedded-tool-heading { display: block; }
   .embedded-tool-heading p { margin-top: 7px; text-align: left; }
   .concentration-entry-grid { grid-template-columns: repeat(2, 1fr); }
@@ -590,6 +606,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .panel-heading,
 [data-theme='dark'] .guide-progress,
 [data-theme='dark'] .guide-pagination { border-color: #2a3d39; }
+[data-theme='dark'] .guide-floating-pagination { border-color: #314642; background: #14211ff2; box-shadow: 0 12px 36px #0007; }
+[data-theme='dark'] .guide-floating-pagination > button { color: #a7d8d0; background: #1d302c; }
 [data-theme='dark'] .panel-heading p,
 [data-theme='dark'] .guide-heading p { color: #8ea39e; }
 [data-theme='dark'] .setup-card,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -675,12 +675,38 @@ function InteractiveGuide({
     0,
   );
   const totalCount = rnaQpcrSections.reduce((count, current) => count + current.items.length, 0);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const endPaginationRef = useRef<HTMLDivElement>(null);
+  const [hasPassedProgress, setHasPassedProgress] = useState(false);
+  const [isEndPaginationVisible, setIsEndPaginationVisible] = useState(false);
+
+  useEffect(() => {
+    const progress = progressRef.current;
+    const endPagination = endPaginationRef.current;
+    if (!progress || !endPagination) return;
+
+    const progressObserver = new IntersectionObserver(([entry]) => {
+      setHasPassedProgress(!entry.isIntersecting && entry.boundingClientRect.bottom < 0);
+    });
+    const endPaginationObserver = new IntersectionObserver(([entry]) => {
+      setIsEndPaginationVisible(entry.isIntersecting);
+    }, { threshold: 0.25 });
+
+    progressObserver.observe(progress);
+    endPaginationObserver.observe(endPagination);
+    return () => {
+      progressObserver.disconnect();
+      endPaginationObserver.disconnect();
+    };
+  }, []);
+
+  const progressPercent = totalCount ? (completedCount / totalCount) * 100 : 0;
 
   return (
     <section className="qpcr-panel guide-panel">
-      <div className="guide-progress">
+      <div className="guide-progress" ref={progressRef}>
         <div><span>总进度</span><strong>{completedCount} / {totalCount}</strong><small>退出后清空</small></div>
-        <div className="progress-track"><span style={{ width: `${totalCount ? (completedCount / totalCount) * 100 : 0}%` }} /></div>
+        <div className="progress-track"><span style={{ width: `${progressPercent}%` }} /></div>
         <div className="page-dots" aria-label="SOP 页码">
           {rnaQpcrSections.map((item, index) => <button key={item.id} className={index === page ? 'active' : ''} onClick={() => setPage(index)} aria-label={`第 ${index + 1} 页：${item.title}`}>{index + 1}</button>)}
         </div>
@@ -745,11 +771,21 @@ function InteractiveGuide({
         <span><NotebookPen size={17} />本页备注 <small><Save size={13} />自动保存于此浏览器</small></span>
         <textarea value={notes[section.id] ?? ''} onChange={(event) => onNote(section.id, event.target.value)} placeholder="记录样本状态、异常情况或需要交接的信息…" />
       </label>
-      <div className="guide-pagination">
+      <div className="guide-pagination" ref={endPaginationRef}>
         <button disabled={page === 0} onClick={() => setPage(Math.max(0, page - 1))}><ChevronLeft size={18} />上一页</button>
         <span>第 {page + 1} / {rnaQpcrSections.length} 页</span>
         <button disabled={page === rnaQpcrSections.length - 1} onClick={() => setPage(Math.min(rnaQpcrSections.length - 1, page + 1))}>下一页<ChevronRight size={18} /></button>
       </div>
+      {hasPassedProgress && !isEndPaginationVisible && (
+        <nav className="guide-floating-pagination" aria-label="浮动 SOP 翻页">
+          <div className="progress-track"><span style={{ width: `${progressPercent}%` }} /></div>
+          <button type="button" disabled={page === 0} onClick={() => setPage(Math.max(0, page - 1))}><ChevronLeft size={15} />上一页</button>
+          <div className="page-dots" aria-label="浮动 SOP 页码">
+            {rnaQpcrSections.map((item, index) => <button type="button" key={item.id} className={index === page ? 'active' : ''} onClick={() => setPage(index)} aria-label={`第 ${index + 1} 页：${item.title}`}>{index + 1}</button>)}
+          </div>
+          <button type="button" disabled={page === rnaQpcrSections.length - 1} onClick={() => setPage(Math.min(rnaQpcrSections.length - 1, page + 1))}>下一页<ChevronRight size={15} /></button>
+        </nav>
+      )}
     </section>
   );
 }
