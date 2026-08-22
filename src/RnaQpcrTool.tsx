@@ -11,6 +11,7 @@ import {
   FileText,
   LayoutGrid,
   LockKeyhole,
+  Minus,
   NotebookPen,
   Plus,
   RotateCcw,
@@ -120,6 +121,68 @@ function formatUl(value: number): string {
   return `${value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')} μl`;
 }
 
+function IntegerStepper({
+  label,
+  value,
+  min,
+  max,
+  unit,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commitValue = (nextValue: number) => {
+    const clampedValue = Math.min(max, Math.max(min, nextValue));
+    setDraft(String(clampedValue));
+    onChange(clampedValue);
+  };
+
+  return (
+    <div className="integer-stepper">
+      <span>{label}</span>
+      <div className="stepper-control">
+        <button type="button" disabled={value <= min} onClick={() => commitValue(value - 1)} aria-label={`${label}减少`}><Minus size={15} /></button>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={draft}
+          onChange={(event) => {
+            const nextDraft = event.target.value;
+            if (nextDraft === '') {
+              setDraft('');
+              return;
+            }
+            if (/^\d+$/.test(nextDraft)) commitValue(Number(nextDraft));
+          }}
+          onBlur={() => {
+            if (draft === '') setDraft(String(value));
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+            event.preventDefault();
+            commitValue(value + (event.key === 'ArrowUp' ? 1 : -1));
+          }}
+          aria-label={label}
+        />
+        <button type="button" disabled={value >= max} onClick={() => commitValue(value + 1)} aria-label={`${label}增加`}><Plus size={15} /></button>
+      </div>
+      <b>{unit}</b>
+    </div>
+  );
+}
+
 function fittedWellFontSize(value: string, maximumSize: number): string {
   const widthUnits = Array.from(value).reduce(
     (total, character) => total + ((character.codePointAt(0) ?? 0) > 255 ? 1 : 0.55),
@@ -163,8 +226,6 @@ export default function RnaQpcrTool() {
     [session.referencePrimer, session.targetPrimers],
   );
   const hasPlateInitialization = allPrimers.length > 0 || initializedSamples.length > 0;
-  const plannedWells = allPrimers.length * allSamples.length * session.replicates;
-  const prepReactions = allPrimers.length * allSamples.length * (session.replicates + session.extraReactions);
 
   const plateLayout = useMemo(
     () => createQpcrPlateLayout(
@@ -412,14 +473,11 @@ export default function RnaQpcrTool() {
           </div>
 
           <div className="run-options">
-            <label><span>每组复孔</span><input type="number" min="1" max="12" value={session.replicates} onChange={(event) => setSession((current) => ({ ...current, replicates: Math.max(1, Number(event.target.value)) }))} /><b>孔</b></label>
-            <label><span>每组冗余</span><input type="number" min="0" max="12" value={session.extraReactions} onChange={(event) => setSession((current) => ({ ...current, extraReactions: Math.max(0, Number(event.target.value)) }))} /><b>反应</b></label>
+            <IntegerStepper label="每组复孔" value={session.replicates} min={1} max={12} unit="孔" onChange={(value) => setSession((current) => ({ ...current, replicates: value }))} />
+            <IntegerStepper label="每组冗余" value={session.extraReactions} min={0} max={12} unit="反应" onChange={(value) => setSession((current) => ({ ...current, extraReactions: value }))} />
           </div>
 
-          <div className="run-summary">
-            <div><small>实际上板</small><strong>{plannedWells}</strong><span>孔</span></div>
-            <div><small>配液反应</small><strong>{prepReactions}</strong><span>份</span></div>
-            <div><small>自动板数</small><strong>{plateLayout?.length ?? '—'}</strong><span>块</span></div>
+          <div className="setup-sticky-action">
             <button onClick={() => selectTab('guide')}>开始互动流程<ArrowRight size={17} /></button>
           </div>
         </section>
