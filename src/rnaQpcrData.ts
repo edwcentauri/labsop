@@ -1,3 +1,5 @@
+import type { VersionHistoryEntry } from './versionHistory';
+
 export type InteractiveSopItem = {
   text: string;
   details?: string[];
@@ -12,9 +14,18 @@ export type InteractiveSopSection = {
   items: InteractiveSopItem[];
 };
 
-export const RNA_QPCR_PDF_FILE_NAME = '组织提RNA（柱提法）+qPCR ver.20260822.pdf';
+export const RNA_QPCR_PDF_FILE_NAME = '组织提RNA（柱提法）+qPCR v1.0.pdf';
 export const RNA_QPCR_PDF_PATH = `pdfs/${RNA_QPCR_PDF_FILE_NAME}`;
-export const RNA_QPCR_VERSION = /ver\.(\d{8})/i.exec(RNA_QPCR_PDF_FILE_NAME)?.[1] ?? '未知版本';
+export const RNA_QPCR_VERSION = 'v1.0';
+export const RNA_QPCR_RELEASE_DATE = '2026-08-22';
+export const RNA_QPCR_EFFECTIVE_DATE = RNA_QPCR_RELEASE_DATE;
+export const RNA_QPCR_VERSION_HISTORY = [
+  {
+    version: RNA_QPCR_VERSION,
+    date: RNA_QPCR_RELEASE_DATE,
+    summary: '第一个发行版本',
+  },
+] as const satisfies readonly VersionHistoryEntry[];
 
 export const reverseTranscriptionBranches = {
   10: {

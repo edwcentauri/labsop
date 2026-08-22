@@ -32,11 +32,14 @@ import {
 } from './calculations';
 import {
   reverseTranscriptionBranches,
+  RNA_QPCR_EFFECTIVE_DATE,
   RNA_QPCR_PDF_FILE_NAME,
   RNA_QPCR_PDF_PATH,
   RNA_QPCR_VERSION,
+  RNA_QPCR_VERSION_HISTORY,
   rnaQpcrSections,
 } from './rnaQpcrData';
+import VersionHistoryDialog from './VersionHistoryDialog';
 
 type ToolTab = 'setup' | 'guide' | 'plate' | 'distribution';
 type PlateMode = 'auto' | 'manual';
@@ -485,7 +488,12 @@ export default function RnaQpcrTool() {
             <span className="section-kicker">FORMAL INTERACTIVE SOP</span>
             <h1>组织提 RNA（柱提法）+ qPCR</h1>
             <div className="version-row">
-              <span>SOP 版本 ver.{RNA_QPCR_VERSION}</span>
+              <VersionHistoryDialog
+                entries={RNA_QPCR_VERSION_HISTORY}
+                title="组织提 RNA（柱提法）+ qPCR"
+                triggerLabel={`SOP 版本 ${RNA_QPCR_VERSION}`}
+              />
+              <span>生效日期 {RNA_QPCR_EFFECTIVE_DATE}</span>
               <span>配置与备注本地保存</span>
             </div>
           </div>
@@ -494,7 +502,7 @@ export default function RnaQpcrTool() {
             <a className="secondary-button" href={pdfFile} download={RNA_QPCR_PDF_FILE_NAME}><Download size={18} />下载原文件</a>
           </div>
         </div>
-        <div className="source-alert"><FileText size={18} /><span>当前正确操作以网页内容为准；PDF 仅用于查看与下载，SOP 版本号仅从文件名读取，不校验 PDF 页面内容。</span></div>
+        <div className="source-alert"><FileText size={18} /><span>当前正确操作以网页内容为准；PDF 仅用于查看与下载，网页与下载文件名当前均标记为 {RNA_QPCR_VERSION}，未校验 PDF 页面内容。</span></div>
       </div>
 
       <nav className="qpcr-tabs" aria-label="qPCR SOP 工具">
