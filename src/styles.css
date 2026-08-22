@@ -376,6 +376,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .page-dots { display: flex; gap: 5px; }
 .page-dots button { width: 27px; height: 27px; padding: 0; border: 1px solid #d7e4e0; border-radius: 50%; color: #748783; background: white; font-size: 9px; cursor: pointer; }
 .page-dots button.active { color: white; border-color: #0f766e; background: #0f766e; }
+.page-dots button.completed { color: white; border-color: #17897e; background: #17897e; }
+.page-dots button.completed svg { display: block; margin: auto; stroke-width: 2.5; }
 .guide-heading { padding: 30px 0 22px; }
 .guide-heading h2 { margin: 6px 0 0; font-size: 30px; letter-spacing: -.04em; }
 .guide-heading p { margin: 7px 0 0; color: #758884; font-size: 12px; }
@@ -619,6 +621,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .notes-field textarea,
 [data-theme='dark'] .page-dots button,
 [data-theme='dark'] .guide-pagination button { color: #d8e5e2; border-color: #314642; background: #162522; }
+[data-theme='dark'] .page-dots button.completed { color: white; border-color: #2aa99c; background: #17897e; }
 [data-theme='dark'] .locked-field b,
 [data-theme='dark'] .checklist-item p,
 [data-theme='dark'] .notes-field > span { color: #bad0cb; }

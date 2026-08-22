@@ -674,6 +674,10 @@ function InteractiveGuide({
     (count, current) => count + current.items.filter((_, index) => completed[`${current.id}:${index}`]).length,
     0,
   );
+  const completedPages = rnaQpcrSections.map((current) => (
+    current.items.length > 0
+    && current.items.every((_, index) => completed[`${current.id}:${index}`])
+  ));
   const totalCount = rnaQpcrSections.reduce((count, current) => count + current.items.length, 0);
   const progressRef = useRef<HTMLDivElement>(null);
   const endPaginationRef = useRef<HTMLDivElement>(null);
@@ -701,15 +705,33 @@ function InteractiveGuide({
   }, []);
 
   const progressPercent = totalCount ? (completedCount / totalCount) * 100 : 0;
+  const renderPageDots = (label: string) => (
+    <div className="page-dots" aria-label={label}>
+      {rnaQpcrSections.map((item, index) => {
+        const isComplete = completedPages[index];
+        const className = [index === page ? 'active' : '', isComplete ? 'completed' : ''].filter(Boolean).join(' ');
+        return (
+          <button
+            type="button"
+            key={item.id}
+            className={className}
+            onClick={() => setPage(index)}
+            aria-current={index === page ? 'page' : undefined}
+            aria-label={`第 ${index + 1} 页：${item.title}${isComplete ? '，已完成' : ''}`}
+          >
+            {isComplete ? <Check size={14} aria-hidden="true" /> : index + 1}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <section className="qpcr-panel guide-panel">
       <div className="guide-progress" ref={progressRef}>
         <div><span>总进度</span><strong>{completedCount} / {totalCount}</strong><small>退出后清空</small></div>
         <div className="progress-track"><span style={{ width: `${progressPercent}%` }} /></div>
-        <div className="page-dots" aria-label="SOP 页码">
-          {rnaQpcrSections.map((item, index) => <button key={item.id} className={index === page ? 'active' : ''} onClick={() => setPage(index)} aria-label={`第 ${index + 1} 页：${item.title}`}>{index + 1}</button>)}
-        </div>
+        {renderPageDots('SOP 页码')}
       </div>
       <div className="guide-heading"><span className="section-kicker">{section.kicker}</span><h2>{section.title}</h2><p>{section.summary}</p></div>
       {section.id === 'rna-concentration' && (
@@ -780,9 +802,7 @@ function InteractiveGuide({
         <nav className="guide-floating-pagination" aria-label="浮动 SOP 翻页">
           <div className="progress-track"><span style={{ width: `${progressPercent}%` }} /></div>
           <button type="button" disabled={page === 0} onClick={() => setPage(Math.max(0, page - 1))}><ChevronLeft size={15} />上一页</button>
-          <div className="page-dots" aria-label="浮动 SOP 页码">
-            {rnaQpcrSections.map((item, index) => <button type="button" key={item.id} className={index === page ? 'active' : ''} onClick={() => setPage(index)} aria-label={`第 ${index + 1} 页：${item.title}`}>{index + 1}</button>)}
-          </div>
+          {renderPageDots('浮动 SOP 页码')}
           <button type="button" disabled={page === rnaQpcrSections.length - 1} onClick={() => setPage(Math.min(rnaQpcrSections.length - 1, page + 1))}>下一页<ChevronRight size={15} /></button>
         </nav>
       )}
