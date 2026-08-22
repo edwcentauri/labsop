@@ -515,8 +515,8 @@ function ReverseTranscriptionPlan({
               </div>
               {result ? (
                 <dl>
-                  <div><dt>RNA 样品</dt><dd>{formatUl(result.rnaVolume)}</dd></div>
                   <div><dt>gDNA Clean Mix</dt><dd>2 μl</dd></div>
+                  <div><dt>RNA 样品</dt><dd>{formatUl(result.rnaVolume)}</dd></div>
                   <div><dt>无酶无菌水</dt><dd>{formatUl(result.waterVolume)}</dd></div>
                   <div className="plan-total"><dt>总体系</dt><dd>{result.totalVolume} μl</dd></div>
                 </dl>

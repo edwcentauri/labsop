@@ -20,16 +20,14 @@ export const reverseTranscriptionBranches = {
   10: {
     title: '10 μl 统一体系流程',
     steps: [
-      { title: '3A · 去除 gDNA 配液', text: '每孔加入 2 μl gDNA Clean Mix、计算所得 RNA 样品，并以无酶无菌水补足至 10 μl。' },
-      { title: '4A · 第一次 PCR', text: '运行 SZH/CDNA 1 程序，体系容积 10 μl，约 4 分钟。' },
+      { title: '4A · 去除 gDNA', text: '运行 SZH/CDNA 1 程序，体系容积 10 μl，约 4 分钟。' },
       { title: '5A · 逆转录', text: '每孔加入 4 μl RT Reaction Mix 和 6 μl 无酶无菌水，配制成 20 μl 体系。混匀、离心后运行 SZH/CDNA 2 程序，体系容积 20 μl，约 16 分钟，得到逆转录后的 cDNA。' },
     ],
   },
   16: {
     title: '16 μl 统一体系流程',
     steps: [
-      { title: '3B · 去除 gDNA 配液', text: '每孔加入 2 μl gDNA Clean Mix、计算所得 RNA 样品，并以无酶无菌水补足至 16 μl。' },
-      { title: '4B · 第一次 PCR', text: '运行 SZH/CDNA 1 程序，体系容积 16 μl，约 4 分钟。' },
+      { title: '4B · 去除 gDNA', text: '运行 SZH/CDNA 1 程序，体系容积 16 μl，约 4 分钟。' },
       { title: '5B · 逆转录', text: '每孔加入 4 μl RT Reaction Mix，不再补水，配制成 20 μl 体系。混匀、离心后运行 SZH/CDNA 2 程序，体系容积 20 μl，约 16 分钟，得到逆转录后的 cDNA。' },
     ],
   },
