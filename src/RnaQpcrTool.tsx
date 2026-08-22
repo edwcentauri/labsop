@@ -11,6 +11,8 @@ import {
   FileText,
   LayoutGrid,
   LockKeyhole,
+  Maximize2,
+  Minimize2,
   Minus,
   NotebookPen,
   Plus,
@@ -38,6 +40,11 @@ import {
 
 type ToolTab = 'setup' | 'guide' | 'plate' | 'distribution';
 type PlateMode = 'auto' | 'manual';
+type PlateFullscreenMode = 'none' | 'native' | 'fallback';
+
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: 'landscape') => Promise<void>;
+};
 
 type ManualWell = {
   primer?: string;
@@ -189,6 +196,75 @@ function fittedWellFontSize(value: string, maximumSize: number): string {
     0,
   );
   return `${Math.min(maximumSize, 34 / Math.max(widthUnits, 1))}px`;
+}
+
+function usePlateFullscreen() {
+  const cardRef = useRef<HTMLElement>(null);
+  const nativeFullscreenActive = useRef(false);
+  const [fullscreenMode, setFullscreenMode] = useState<PlateFullscreenMode>('none');
+  const isFullscreen = fullscreenMode !== 'none';
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      if (document.fullscreenElement === cardRef.current) {
+        nativeFullscreenActive.current = true;
+        setFullscreenMode('native');
+      } else if (nativeFullscreenActive.current) {
+        nativeFullscreenActive.current = false;
+        screen.orientation?.unlock();
+        setFullscreenMode('none');
+      }
+    };
+
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+      if (nativeFullscreenActive.current) screen.orientation?.unlock();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fullscreenMode !== 'fallback') return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFullscreenMode('none');
+    };
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', exitOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', exitOnEscape);
+    };
+  }, [fullscreenMode]);
+
+  const toggleFullscreen = async () => {
+    if (fullscreenMode === 'fallback') {
+      setFullscreenMode('none');
+      return;
+    }
+    if (document.fullscreenElement === cardRef.current) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    const card = cardRef.current;
+    if (!card) return;
+    try {
+      await card.requestFullscreen();
+      nativeFullscreenActive.current = true;
+      setFullscreenMode('native');
+    } catch {
+      setFullscreenMode('fallback');
+      return;
+    }
+
+    const orientation = screen.orientation as LockableScreenOrientation | undefined;
+    if (orientation?.lock) await orientation.lock('landscape').catch(() => undefined);
+  };
+
+  return { cardRef, isFullscreen, fullscreenMode, toggleFullscreen };
 }
 
 function manualPlatesFromAutoLayout(
@@ -889,13 +965,20 @@ function ReverseTranscriptionPlan({
 }
 
 function PlateView({ plate }: { plate: NonNullable<ReturnType<typeof createQpcrPlateLayout>>[number] }) {
+  const { cardRef, isFullscreen, fullscreenMode, toggleFullscreen } = usePlateFullscreen();
   const assignments = new Map(plate.wells.map((well) => [well.well, well]));
   const rows = 'ABCDEFGH'.split('');
   return (
-    <article className="plate-card">
+    <article ref={cardRef} className={`plate-card${fullscreenMode === 'fallback' ? ' fullscreen-fallback' : ''}`}>
       <div className="plate-card-heading">
         <div><span>PLATE {plate.number.toString().padStart(2, '0')}</span><h3>96 孔板 {plate.number}</h3></div>
-        <strong>{plate.wells.length} / 96 孔</strong>
+        <div className="plate-card-actions">
+          <strong>{plate.wells.length} / 96 孔</strong>
+          <button type="button" className="plate-fullscreen-button" onClick={toggleFullscreen} aria-label={`${isFullscreen ? '退出' : '全屏显示'}96 孔板 ${plate.number}`} aria-pressed={isFullscreen}>
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            <span>{isFullscreen ? '退出全屏' : '全屏显示'}</span>
+          </button>
+        </div>
       </div>
       <div className="plate-legend">
         {plate.primers.map((primer, index) => <span key={`${primer}-${index}`}><i className={`well-color color-${index % 6}`} />{primer}{index === 0 ? '（内参）' : ''}</span>)}
@@ -934,13 +1017,20 @@ function ManualPlateView({
   referencePrimer: string;
   onWellClick: (wellName: string) => void;
 }) {
+  const { cardRef, isFullscreen, fullscreenMode, toggleFullscreen } = usePlateFullscreen();
   const rows = 'ABCDEFGH'.split('');
   const filledWellCount = Object.keys(plate.wells).length;
   return (
-    <article className="plate-card manual-plate-card">
+    <article ref={cardRef} className={`plate-card manual-plate-card${fullscreenMode === 'fallback' ? ' fullscreen-fallback' : ''}`}>
       <div className="plate-card-heading">
         <div><span>MANUAL PLATE {plate.number.toString().padStart(2, '0')}</span><h3>96 孔板 {plate.number}</h3></div>
-        <strong>{filledWellCount} / 96 孔已设置</strong>
+        <div className="plate-card-actions">
+          <strong>{filledWellCount} / 96 孔已设置</strong>
+          <button type="button" className="plate-fullscreen-button" onClick={toggleFullscreen} aria-label={`${isFullscreen ? '退出' : '全屏显示'}96 孔板 ${plate.number}`} aria-pressed={isFullscreen}>
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            <span>{isFullscreen ? '退出全屏' : '全屏显示'}</span>
+          </button>
+        </div>
       </div>
       <div className="plate-legend">
         {primers.map((primer, index) => <span key={`${primer}-${index}`}><i className={`well-color color-${index % 6}`} />{primer}{primer === referencePrimer ? '（内参）' : ''}</span>)}
@@ -963,6 +1053,7 @@ function ManualPlateView({
                   className={`plate-well manual-well ${assignment ? 'filled' : ''} ${colorIndex >= 0 ? `color-${colorIndex % 6}` : 'manual-unprimed'} ${assignment?.sample?.toUpperCase() === 'NTC' ? 'ntc' : ''}`}
                   title={titleParts.join(' · ')}
                   aria-label={`${wellName}${assignment ? `，引物 ${assignment.primer ?? '未设置'}，样本 ${assignment.sample ?? '未设置'}` : '，未设置'}`}
+                  disabled={isFullscreen}
                   onClick={() => onWellClick(wellName)}
                 >
                   {assignment && <><span><i>样</i><b style={{ fontSize: fittedWellFontSize(assignment.sample ?? '未设置', 8) }}>{assignment.sample ?? '未设置'}</b></span><small><i>引</i><b style={{ fontSize: fittedWellFontSize(assignment.primer ?? '未设置', 7) }}>{assignment.primer ?? '未设置'}</b></small></>}
@@ -972,7 +1063,7 @@ function ManualPlateView({
           ])}
         </div>
       </div>
-      <div className="plate-foot"><span><i className="ntc-mark" />虚线 = NTC</span><span>点击孔位应用当前选择</span></div>
+      <div className="plate-foot"><span><i className="ntc-mark" />虚线 = NTC</span><span>{isFullscreen ? '全屏显示期间为只读' : '点击孔位应用当前选择'}</span></div>
     </article>
   );
 }
