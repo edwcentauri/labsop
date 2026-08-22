@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
-  Calculator,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -27,11 +26,10 @@ import {
   calculateRnaLoading,
   calculateTubeDistribution,
   createQpcrPlateLayout,
-  type ReverseTranscriptionSystem,
 } from './calculations';
 import { rnaQpcrSections } from './rnaQpcrData';
 
-type ToolTab = 'setup' | 'guide' | 'loading' | 'plate' | 'mix' | 'distribution';
+type ToolTab = 'setup' | 'guide' | 'plate' | 'mix' | 'distribution';
 
 type SessionState = {
   referencePrimer: string;
@@ -39,8 +37,7 @@ type SessionState = {
   samples: string[];
   replicates: number;
   extraReactions: number;
-  systemVolume: ReverseTranscriptionSystem;
-  concentrations: number[];
+  concentrations: string[];
   completed: Record<string, boolean>;
   notes: Record<string, string>;
 };
@@ -55,8 +52,7 @@ const defaultSession: SessionState = {
   samples: ['样本 1', '样本 2', '样本 3', '样本 4', '样本 5', '样本 6'],
   replicates: 3,
   extraReactions: 1,
-  systemVolume: 10,
-  concentrations: [100, 100, 100, 100, 100, 100],
+  concentrations: ['', '', '', '', '', ''],
   completed: {},
   notes: {},
 };
@@ -64,7 +60,6 @@ const defaultSession: SessionState = {
 const tabs: { id: ToolTab; label: string; Icon: typeof Settings2 }[] = [
   { id: 'setup', label: '初始化', Icon: Settings2 },
   { id: 'guide', label: '互动 SOP', Icon: ClipboardCheck },
-  { id: 'loading', label: '上样量', Icon: Calculator },
   { id: 'plate', label: '96 孔板', Icon: LayoutGrid },
   { id: 'mix', label: '体系计算', Icon: FlaskConical },
   { id: 'distribution', label: '总管分装', Icon: TestTubes },
@@ -80,7 +75,9 @@ function loadSession(): SessionState {
       ...parsed,
       targetPrimers: Array.isArray(parsed.targetPrimers) ? parsed.targetPrimers : defaultSession.targetPrimers,
       samples: Array.isArray(parsed.samples) ? parsed.samples : defaultSession.samples,
-      concentrations: Array.isArray(parsed.concentrations) ? parsed.concentrations : defaultSession.concentrations,
+      concentrations: Array.isArray(parsed.concentrations)
+        ? parsed.concentrations.map((value) => typeof value === 'string' ? value : '')
+        : defaultSession.concentrations,
       completed: parsed.completed && typeof parsed.completed === 'object' ? parsed.completed : {},
       notes: parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {},
     };
@@ -152,7 +149,7 @@ export default function RnaQpcrTool() {
       return {
         ...current,
         samples: [...current.samples, `样本 ${current.samples.length + 1}`],
-        concentrations: [...current.concentrations, 100],
+        concentrations: [...current.concentrations, ''],
       };
     });
   };
@@ -260,44 +257,15 @@ export default function RnaQpcrTool() {
           setPage={setGuidePage}
           completed={session.completed}
           notes={session.notes}
+          samples={session.samples}
+          concentrations={session.concentrations}
           onToggle={(key) => setSession((current) => ({ ...current, completed: { ...current.completed, [key]: !current.completed[key] } }))}
           onNote={(key, value) => setSession((current) => ({ ...current, notes: { ...current.notes, [key]: value } }))}
+          onConcentration={(index, value) => setSession((current) => ({
+            ...current,
+            concentrations: current.samples.map((_, itemIndex) => itemIndex === index ? value : (current.concentrations[itemIndex] ?? '')),
+          }))}
         />
-      )}
-
-      {tab === 'loading' && (
-        <section className="qpcr-panel">
-          <div className="panel-heading"><div><span className="section-kicker">1 μg RNA</span><h2>上样量计算器</h2><p>按 PDF 公式 1000 ÷ 样品浓度计算 RNA 体积，结果精确到 0.01 μl。</p></div></div>
-          <div className="segmented-control" role="group" aria-label="去 gDNA 体系体积">
-            {([10, 16] as ReverseTranscriptionSystem[]).map((volume) => (
-              <button key={volume} className={session.systemVolume === volume ? 'active' : ''} onClick={() => setSession((current) => ({ ...current, systemVolume: volume }))}>{volume} μl 体系</button>
-            ))}
-          </div>
-          {session.systemVolume === 16 && (
-            <div className="formula-warning"><CircleAlert size={18} /><p><strong>受控内容待确认：</strong>PDF 将 16 μl 体系的水量写为“16 - 上样量”，加上 2 μl Mix 后总量为 18 μl。本计算器为保持总体系 16 μl，暂按“14 - 上样量”校核显示；请勿在未确认新版 SOP 前直接执行。</p></div>
-          )}
-          <div className="loading-table-wrap">
-            <table className="calculation-table loading-table">
-              <thead><tr><th>样本</th><th>RNA 浓度</th><th>RNA 上样量</th><th>gDNA Clean Mix</th><th>无酶无菌水</th><th>校核</th></tr></thead>
-              <tbody>
-                {session.samples.map((sample, index) => {
-                  const concentration = session.concentrations[index] ?? 0;
-                  const result = calculateRnaLoading(concentration, session.systemVolume);
-                  return (
-                    <tr key={`loading-${index}`}>
-                      <th>{sample || `样本 ${index + 1}`}</th>
-                      <td><label className="table-input"><input type="number" min="0" step="0.01" value={concentration} onChange={(event) => setSession((current) => ({ ...current, concentrations: current.samples.map((_, itemIndex) => itemIndex === index ? Number(event.target.value) : (current.concentrations[itemIndex] ?? 0)) }))} /><span>ng/μl</span></label></td>
-                      <td>{result ? formatUl(result.rnaVolume) : '—'}</td>
-                      <td>{result ? '2 μl' : '—'}</td>
-                      <td>{result ? formatUl(result.waterVolume) : '—'}</td>
-                      <td>{result ? <span className="status-ok"><Check size={14} />{result.totalVolume} μl</span> : <span className="status-bad">体积不足</span>}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
       )}
 
       {tab === 'plate' && (
@@ -376,17 +344,36 @@ function InteractiveGuide({
   setPage,
   completed,
   notes,
+  samples,
+  concentrations,
   onToggle,
   onNote,
+  onConcentration,
 }: {
   page: number;
   setPage: (page: number) => void;
   completed: Record<string, boolean>;
   notes: Record<string, string>;
+  samples: string[];
+  concentrations: string[];
   onToggle: (key: string) => void;
   onNote: (key: string, value: string) => void;
+  onConcentration: (index: number, value: string) => void;
 }) {
   const section = rnaQpcrSections[page];
+  const loadingPlans = samples.map((sample, index) => {
+    const rawConcentration = concentrations[index]?.trim() ?? '';
+    const concentration = Number(rawConcentration);
+    return {
+      sample: sample || `样本 ${index + 1}`,
+      rawConcentration,
+      concentration,
+      result: rawConcentration && Number.isFinite(concentration) && concentration > 0
+        ? calculateRnaLoading(concentration)
+        : null,
+    };
+  });
+  const hasSixteenUlPlan = loadingPlans.some((plan) => plan.result?.totalVolume === 16);
   const completedCount = rnaQpcrSections.reduce(
     (count, current) => count + current.items.filter((_, index) => completed[`${current.id}:${index}`]).length,
     0,
@@ -403,6 +390,77 @@ function InteractiveGuide({
         </div>
       </div>
       <div className="guide-heading"><span className="section-kicker">{section.kicker}</span><h2>{section.title}</h2><p>{section.summary}</p></div>
+      {section.id === 'rna-concentration' && (
+        <div className="concentration-entry">
+          <div className="embedded-tool-heading">
+            <div><span>RNA CONCENTRATION</span><h3>记录本批次浓度</h3></div>
+            <p>只需录入测量值；上样方案将在下一页“逆转录”中自动生成。</p>
+          </div>
+          <div className="concentration-entry-grid">
+            {samples.map((sample, index) => (
+              <label className="concentration-field" key={`concentration-${index}`}>
+                <span>{sample || `样本 ${index + 1}`}</span>
+                <div>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={concentrations[index] ?? ''}
+                    onChange={(event) => onConcentration(index, event.target.value)}
+                    placeholder="输入浓度"
+                    aria-label={`${sample || `样本 ${index + 1}`} RNA 浓度`}
+                  />
+                  <b>ng/μl</b>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {section.id === 'reverse-transcription' && (
+        <div className="loading-plan-section">
+          <div className="embedded-tool-heading">
+            <div><span>AUTO LOADING PLAN</span><h3>本批次上样方案</h3></div>
+            <p>RNA ≤ 8 μl 使用 10 μl 体系；超过后自动切换 16 μl，16 μl 仍放不下时才报错。</p>
+          </div>
+          <div className="loading-plan-grid">
+            {loadingPlans.map((plan, index) => {
+              const hasConcentration = plan.rawConcentration !== '';
+              const validConcentration = hasConcentration && Number.isFinite(plan.concentration) && plan.concentration > 0;
+              const rnaVolume = validConcentration ? 1000 / plan.concentration : null;
+              return (
+                <article
+                  className={`loading-plan-card ${!hasConcentration ? 'waiting' : plan.result ? `system-${plan.result.totalVolume}` : 'error'}`}
+                  key={`loading-plan-${index}`}
+                >
+                  <div className="loading-plan-title">
+                    <div><span>{plan.sample}</span>{hasConcentration && <small>{plan.rawConcentration} ng/μl</small>}</div>
+                    {plan.result && <b>{plan.result.totalVolume} μl 体系</b>}
+                  </div>
+                  {!hasConcentration ? (
+                    <p className="plan-message">等待上一页录入 RNA 浓度</p>
+                  ) : !validConcentration ? (
+                    <p className="plan-message error"><CircleAlert size={15} />浓度必须大于 0</p>
+                  ) : !plan.result ? (
+                    <p className="plan-message error"><CircleAlert size={15} />RNA 需 {formatUl(rnaVolume ?? 0)}，16 μl 体系仍不足</p>
+                  ) : (
+                    <dl>
+                      <div><dt>RNA 样品</dt><dd>{formatUl(plan.result.rnaVolume)}</dd></div>
+                      <div><dt>gDNA Clean Mix</dt><dd>2 μl</dd></div>
+                      <div><dt>无酶无菌水</dt><dd>{formatUl(plan.result.waterVolume)}</dd></div>
+                      <div className="plan-total"><dt>总体系</dt><dd>{plan.result.totalVolume} μl</dd></div>
+                    </dl>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+          {hasSixteenUlPlan && (
+            <div className="formula-warning"><CircleAlert size={18} /><p><strong>16 μl 体系校核提示：</strong>PDF 原文的列示相加为 18 μl。本方案按标称总体系 16 μl 计算水量，即 14 - RNA 上样量；执行前仍须确认受控版本。</p></div>
+          )}
+        </div>
+      )}
       <div className="checklist">
         {section.items.map((item, index) => {
           const key = `${section.id}:${index}`;

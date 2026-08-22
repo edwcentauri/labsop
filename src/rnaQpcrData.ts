@@ -40,7 +40,7 @@ export const rnaQpcrSections: InteractiveSopSection[] = [
     id: 'rna-concentration',
     kicker: '02 · QC',
     title: '测 RNA 浓度',
-    summary: '完成浓度测定并留下可追溯记录。',
+    summary: '完成浓度测定并在本页录入；上样方案将在下一页自动生成。',
     items: [
       { text: '测 RNA 浓度，做好记录，单位 ng/μl。' },
     ],
@@ -49,7 +49,7 @@ export const rnaQpcrSections: InteractiveSopSection[] = [
     id: 'reverse-transcription',
     kicker: '03 · REVERSE TRANSCRIPTION',
     title: '逆转录',
-    summary: '按 1 μg RNA 计算上样量，完成去 gDNA 与逆转录程序。',
+    summary: '按已录入的浓度自动选择体系并展示上样方案，随后完成去 gDNA 与逆转录程序。',
     items: [
       { text: '使用艾本德移液枪进行后续步骤。' },
       { text: '准备八连排，按 1 μg RNA 计算，上样量为 1000 ÷ 样品浓度，精确到 0.01（10 μl 枪精度）。' },

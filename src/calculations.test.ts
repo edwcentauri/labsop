@@ -32,8 +32,8 @@ describe('calculateCellSeeding', () => {
 });
 
 describe('calculateRnaLoading', () => {
-  it('calculates a 10 μl gDNA-clean system from a 1 μg RNA target', () => {
-    expect(calculateRnaLoading(200, 10)).toEqual({
+  it('uses the 10 μl system when the RNA volume fits', () => {
+    expect(calculateRnaLoading(200)).toEqual({
       rnaVolume: 5,
       gdnaCleanMixVolume: 2,
       waterVolume: 3,
@@ -41,8 +41,17 @@ describe('calculateRnaLoading', () => {
     });
   });
 
-  it('rejects a sample volume that cannot fit in the selected system', () => {
-    expect(calculateRnaLoading(100, 10)).toBeNull();
+  it('switches to the 16 μl system when the 10 μl system is too small', () => {
+    expect(calculateRnaLoading(100)).toEqual({
+      rnaVolume: 10,
+      gdnaCleanMixVolume: 2,
+      waterVolume: 4,
+      totalVolume: 16,
+    });
+  });
+
+  it('rejects a sample volume that cannot fit in the 16 μl system', () => {
+    expect(calculateRnaLoading(50)).toBeNull();
   });
 });
 
