@@ -59,6 +59,7 @@ type SessionState = {
   notes: Record<string, string>;
   plateMode: PlateMode;
   manualPlates: ManualPlate[];
+  manualLayoutDirty: boolean;
 };
 
 const STORAGE_KEY = 'labsop:rna-qpcr-session:v1';
@@ -75,6 +76,7 @@ const defaultSession: SessionState = {
   notes: {},
   plateMode: 'auto',
   manualPlates: [{ number: 1, wells: {} }],
+  manualLayoutDirty: false,
 };
 
 const tabs: { id: ToolTab; label: string; Icon: typeof Settings2 }[] = [
@@ -107,6 +109,9 @@ function loadSession(): SessionState {
       manualPlates: Array.isArray(parsed.manualPlates) && parsed.manualPlates.length > 0
         ? parsed.manualPlates
         : defaultSession.manualPlates,
+      manualLayoutDirty: typeof parsed.manualLayoutDirty === 'boolean'
+        ? parsed.manualLayoutDirty
+        : Boolean(parsed.manualPlates?.some((plate) => Object.keys(plate.wells ?? {}).length > 0) || (parsed.manualPlates?.length ?? 0) > 1),
     };
   } catch {
     return defaultSession;
@@ -119,6 +124,19 @@ function formatUl(value: number): string {
 
 function shortLabel(value: string): string {
   return value.length > 5 ? `${value.slice(0, 4)}…` : value;
+}
+
+function manualPlatesFromAutoLayout(
+  layout: ReturnType<typeof createQpcrPlateLayout>,
+): ManualPlate[] {
+  if (!layout) return [{ number: 1, wells: {} }];
+  return layout.map((plate) => {
+    const wells: Record<string, ManualWell> = {};
+    plate.wells.forEach((well) => {
+      wells[well.well] = { primer: well.primer, sample: well.sample };
+    });
+    return { number: plate.number, wells };
+  });
 }
 
 export default function RnaQpcrTool() {
@@ -182,6 +200,9 @@ export default function RnaQpcrTool() {
       ? current
       : NO_MANUAL_ACTION);
     setSession((current) => {
+      if (!current.manualLayoutDirty) {
+        return { ...current, manualPlates: manualPlatesFromAutoLayout(plateLayout) };
+      }
       let changed = false;
       const manualPlates = current.manualPlates.map((plate) => {
         let plateChanged = false;
@@ -199,7 +220,7 @@ export default function RnaQpcrTool() {
       });
       return changed ? { ...current, manualPlates } : current;
     });
-  }, [allPrimers, allSamples]);
+  }, [allPrimers, allSamples, plateLayout]);
 
   const updateListItem = (field: 'targetPrimers' | 'samples', index: number, value: string) => {
     setSession((current) => field === 'targetPrimers'
@@ -231,7 +252,13 @@ export default function RnaQpcrTool() {
   };
 
   const resetSession = () => {
-    setSession(defaultSession);
+    const defaultPlateLayout = createQpcrPlateLayout(
+      defaultSession.referencePrimer,
+      defaultSession.targetPrimers,
+      [...defaultSession.samples, 'NTC'],
+      defaultSession.replicates,
+    );
+    setSession({ ...defaultSession, manualPlates: manualPlatesFromAutoLayout(defaultPlateLayout) });
     setCompleted({});
     setGuidePage(0);
     setMixReactions(140);
@@ -244,6 +271,7 @@ export default function RnaQpcrTool() {
     if (manualPrimer === NO_MANUAL_ACTION && manualSample === NO_MANUAL_ACTION) return;
     setSession((current) => ({
       ...current,
+      manualLayoutDirty: true,
       manualPlates: current.manualPlates.map((plate) => {
         if (plate.number !== plateNumber) return plate;
         const existing = plate.wells[wellName] ?? {};
@@ -264,6 +292,7 @@ export default function RnaQpcrTool() {
   const addManualPlate = () => {
     setSession((current) => ({
       ...current,
+      manualLayoutDirty: true,
       manualPlates: [
         ...current.manualPlates,
         { number: (current.manualPlates.at(-1)?.number ?? 0) + 1, wells: {} },
@@ -274,12 +303,17 @@ export default function RnaQpcrTool() {
   const clearAllManualWells = () => {
     setSession((current) => ({
       ...current,
+      manualLayoutDirty: true,
       manualPlates: current.manualPlates.map((plate) => ({ ...plate, wells: {} })),
     }));
   };
 
   const restoreManualDefaults = () => {
-    setSession((current) => ({ ...current, manualPlates: [{ number: 1, wells: {} }] }));
+    setSession((current) => ({
+      ...current,
+      manualPlates: manualPlatesFromAutoLayout(plateLayout),
+      manualLayoutDirty: false,
+    }));
     setManualPrimer(NO_MANUAL_ACTION);
     setManualSample(NO_MANUAL_ACTION);
   };
@@ -430,9 +464,9 @@ export default function RnaQpcrTool() {
                 </label>
                 <div className="manual-toolbar-actions">
                   <button type="button" onClick={clearAllManualWells} title="清空所有手动孔位，保留现有板数"><Trash2 size={15} />清空全部</button>
-                  <button type="button" onClick={restoreManualDefaults} title="恢复为一块空白手动板"><RotateCcw size={15} />恢复默认</button>
+                  <button type="button" onClick={restoreManualDefaults} title="恢复当前自动生成的板图"><RotateCcw size={15} />恢复默认</button>
                 </div>
-                <p>点击孔位时，仅修改选择器中不是“无”的属性；保持“清空”可连续移除对应属性。</p>
+                <p>手动设置默认沿用自动生成的板图。点击孔位时，仅修改选择器中不是“无”的属性；“恢复默认”可重新载入当前自动方案。</p>
               </div>
               {session.manualPlates.map((plate) => (
                 <ManualPlateView
