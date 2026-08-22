@@ -1,6 +1,12 @@
-import maintenanceBody from './content/maintenance.md?raw';
-import { RNA_QPCR_PDF_PATH, RNA_QPCR_VERSION } from './rnaQpcrData';
-import sopUpdateBody from './content/sop-update.md?raw';
+import rnaQpcrV1ReleaseBody from './content/rna-qpcr-v1-release.md?raw';
+import {
+  RNA_QPCR_EFFECTIVE_DATE,
+  RNA_QPCR_PDF_PATH,
+  RNA_QPCR_RELEASE_DATE,
+  RNA_QPCR_VERSION,
+  RNA_QPCR_VERSION_HISTORY,
+} from './rnaQpcrData';
+import type { VersionHistoryEntry } from './versionHistory';
 
 export type SopEntry = {
   id: string;
@@ -11,6 +17,7 @@ export type SopEntry = {
   hasPdf: boolean;
   version?: string;
   effectiveDate?: string;
+  versionHistory?: readonly VersionHistoryEntry[];
   pdfPath?: string;
   accent: 'teal' | 'violet' | 'amber';
 };
@@ -24,6 +31,8 @@ export const sops: SopEntry[] = [
     kind: 'tool',
     hasPdf: true,
     version: RNA_QPCR_VERSION,
+    effectiveDate: RNA_QPCR_EFFECTIVE_DATE,
+    versionHistory: RNA_QPCR_VERSION_HISTORY,
     pdfPath: RNA_QPCR_PDF_PATH,
     accent: 'teal',
   },
@@ -31,21 +40,12 @@ export const sops: SopEntry[] = [
 
 export const announcements = [
   {
-    slug: 'centrifuge-maintenance',
-    title: '离心机例行维护通知',
-    summary: '8 月 24 日下午暂停使用，请提前安排实验。',
-    date: '2026-08-21',
-    displayDate: '今天',
-    priority: true,
-    body: maintenanceBody,
-  },
-  {
-    slug: 'sop-version-update',
-    title: 'PBS 配制 SOP 版本更新',
-    summary: '新版 SOP 已生效，请停止使用旧版文件。',
-    date: '2026-08-18',
-    displayDate: '3 天前',
+    slug: 'rna-qpcr-v1-release',
+    title: '组织提 RNA（柱提法）+ qPCR SOP v1.0 发布',
+    summary: 'v1.0 已发布：第一个发行版本。',
+    date: RNA_QPCR_RELEASE_DATE,
+    displayDate: RNA_QPCR_RELEASE_DATE,
     priority: false,
-    body: sopUpdateBody,
+    body: rnaQpcrV1ReleaseBody,
   },
 ];

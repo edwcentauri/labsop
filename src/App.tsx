@@ -15,6 +15,8 @@ import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-rou
 import remarkGfm from 'remark-gfm';
 import { announcements, sops, type SopEntry } from './data';
 import RnaQpcrTool from './RnaQpcrTool';
+import type { VersionHistoryEntry } from './versionHistory';
+import VersionHistoryDialog from './VersionHistoryDialog';
 
 const PdfViewer = lazy(() => import('./PdfViewer'));
 const latestAnnouncementDate = announcements[0].date;
@@ -213,7 +215,19 @@ function HomePage() {
   );
 }
 
-function ToolHeader({ title, category, version, pdfLink }: { title: string; category: string; version?: string; pdfLink?: string }) {
+function ToolHeader({
+  title,
+  category,
+  version,
+  versionHistory,
+  pdfLink,
+}: {
+  title: string;
+  category: string;
+  version?: string;
+  versionHistory?: readonly VersionHistoryEntry[];
+  pdfLink?: string;
+}) {
   return (
     <div className="detail-header">
       <Link className="back-link" to="/"><ArrowLeft size={18} />返回工具列表</Link>
@@ -221,7 +235,16 @@ function ToolHeader({ title, category, version, pdfLink }: { title: string; cate
         <div>
           <span className="section-kicker">{category.toUpperCase()}</span>
           <h1>{title}</h1>
-          {version && <p>版本 {version} · 当前有效</p>}
+          {version && (
+            versionHistory?.length ? (
+              <VersionHistoryDialog
+                entries={versionHistory}
+                title={title}
+                triggerClassName="detail-version-trigger"
+                triggerLabel={`版本 ${version} · 当前有效`}
+              />
+            ) : <p>版本 {version} · 当前有效</p>
+          )}
         </div>
         {pdfLink && <Link className="secondary-button" to={pdfLink}><FileText size={18} />查看 PDF 版</Link>}
       </div>
@@ -234,16 +257,17 @@ function PdfPage() {
   const sop = sops.find((item) => item.id === id && item.pdfPath);
   if (!sop) return <Navigate to="/" replace />;
   const file = `${import.meta.env.BASE_URL}${sop.pdfPath}`;
+  const fileName = sop.pdfPath.split('/').pop() ?? `${sop.title}-${sop.version || 'current'}.pdf`;
 
   return (
     <main className="detail-page pdf-page">
-      <ToolHeader title={sop.title} category={sop.category} version={sop.version} />
+      <ToolHeader title={sop.title} category={sop.category} version={sop.version} versionHistory={sop.versionHistory} />
       <div className="document-meta">
         <span><FileText size={17} />PDF 标准操作文件</span>
         {sop.effectiveDate && <span>生效日期：{sop.effectiveDate}</span>}
       </div>
       <Suspense fallback={<div className="pdf-state"><span className="spinner" />正在启动 PDF 阅读器…</div>}>
-        <PdfViewer file={file} fileName={`${sop.title}-${sop.version || 'current'}.pdf`} />
+        <PdfViewer file={file} fileName={fileName} />
       </Suspense>
     </main>
   );
