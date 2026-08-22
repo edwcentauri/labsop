@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bell,
+  BookOpen,
   ChevronRight,
   FileText,
   Laptop,
@@ -14,6 +15,8 @@ import ReactMarkdown from 'react-markdown';
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import { announcements, sops, type SopEntry } from './data';
+import ManualCard from './ManualCard';
+import { manuals, manualTags } from './manuals';
 import RnaQpcrTool from './RnaQpcrTool';
 import type { VersionHistoryEntry } from './versionHistory';
 import VersionHistoryDialog from './VersionHistoryDialog';
@@ -137,6 +140,7 @@ function HomePage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('全部');
+  const [manualTag, setManualTag] = useState('全部');
   const categories = ['全部', ...Array.from(new Set(sops.map((sop) => sop.category)))];
 
   useEffect(() => {
@@ -159,6 +163,15 @@ function HomePage() {
     });
   }, [category, query]);
 
+  const filteredManuals = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return manuals.filter((manual) => {
+      const matchesTag = manualTag === '全部' || manual.tags.includes(manualTag as (typeof manualTags)[number]);
+      const searchableText = `${manual.title} ${manual.documentType} ${manual.tags.join(' ')} ${manual.fileName}`.toLowerCase();
+      return matchesTag && (!normalized || searchableText.includes(normalized));
+    });
+  }, [manualTag, query]);
+
   const openSop = (sop: SopEntry) => {
     navigate(sop.kind === 'pdf' ? `/sop/${sop.id}/pdf` : `/sop/${sop.id}`);
   };
@@ -171,7 +184,7 @@ function HomePage() {
         <p>查找实验流程、使用计算工具，或直接阅读最新版 SOP 文件。</p>
         <label className="search-box">
           <Search size={20} />
-          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索 SOP 或工具" aria-label="搜索 SOP 或工具" />
+          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索 SOP、工具或说明书" aria-label="搜索 SOP、工具或说明书" />
           {query ? <button onClick={() => setQuery('')} aria-label="清除搜索"><X size={17} /></button> : <kbd>⌘ K</kbd>}
         </label>
       </section>
@@ -209,6 +222,33 @@ function HomePage() {
           </div>
         ) : (
           <div className="empty-state"><Search size={25} /><strong>没有找到匹配内容</strong><span>换一个关键词或分类试试。</span></div>
+        )}
+      </section>
+
+      <section className="content-section manuals-section" aria-labelledby="manuals-heading">
+        <div className="section-heading">
+          <div><span className="section-kicker">MANUAL LIBRARY</span><h2 id="manuals-heading">说明书</h2></div>
+          <span className="count">{filteredManuals.length} 份文件</span>
+        </div>
+        <div className="filter-row" aria-label="说明书分类筛选">
+          {['全部', ...manualTags].map((tag) => (
+            <button
+              type="button"
+              key={tag}
+              className={`filter ${manualTag === tag ? 'active' : ''}`}
+              onClick={() => setManualTag(tag)}
+              aria-pressed={manualTag === tag}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+        {filteredManuals.length ? (
+          <div className="manual-grid">
+            {filteredManuals.map((manual) => <ManualCard key={manual.id} manual={manual} />)}
+          </div>
+        ) : (
+          <div className="empty-state"><Search size={25} /><strong>没有找到匹配说明书</strong><span>换一个关键词或分类试试。</span></div>
         )}
       </section>
     </main>
@@ -274,6 +314,37 @@ function PdfPage() {
   );
 }
 
+function ManualPage() {
+  const { id } = useParams();
+  const manual = manuals.find((item) => item.id === id);
+  if (!manual) return <Navigate to="/" replace />;
+  const file = `${import.meta.env.BASE_URL}${manual.pdfPath}`;
+
+  return (
+    <main className="detail-page pdf-page">
+      <div className="detail-header">
+        <Link className="back-link" to="/"><ArrowLeft size={18} />返回说明书列表</Link>
+        <div className="detail-title-row manual-detail-title">
+          <div>
+            <span className="section-kicker">MANUAL LIBRARY</span>
+            <h1>{manual.title}</h1>
+            <div className="manual-tags detail-manual-tags">
+              {manual.tags.map((tag) => <span key={tag}>{tag}</span>)}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="document-meta">
+        <span><BookOpen size={17} />{manual.documentType}</span>
+        <span>原文件：{manual.fileName}</span>
+      </div>
+      <Suspense fallback={<div className="pdf-state"><span className="spinner" />正在启动 PDF 阅读器…</div>}>
+        <PdfViewer file={file} fileName={manual.fileName} />
+      </Suspense>
+    </main>
+  );
+}
+
 function AnnouncementPage() {
   const { slug } = useParams();
   const notice = announcements.find((item) => item.slug === slug);
@@ -311,6 +382,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/sop/rna-qpcr" element={<RnaQpcrTool />} />
         <Route path="/sop/:id/pdf" element={<PdfPage />} />
+        <Route path="/manuals/:id" element={<ManualPage />} />
         <Route path="/announcements/:slug" element={<AnnouncementPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

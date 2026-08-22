@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -39,9 +40,11 @@ import {
   RNA_QPCR_VERSION_HISTORY,
   rnaQpcrSections,
 } from './rnaQpcrData';
+import ManualCard from './ManualCard';
+import { manuals } from './manuals';
 import VersionHistoryDialog from './VersionHistoryDialog';
 
-type ToolTab = 'setup' | 'guide' | 'plate' | 'distribution';
+type ToolTab = 'setup' | 'guide' | 'plate' | 'distribution' | 'manuals';
 type PlateMode = 'auto' | 'manual';
 type PlateFullscreenMode = 'none' | 'native' | 'fallback';
 
@@ -90,7 +93,10 @@ const tabs: { id: ToolTab; label: string; Icon: typeof Settings2 }[] = [
   { id: 'guide', label: '互动 SOP', Icon: ClipboardCheck },
   { id: 'plate', label: '96 孔板', Icon: LayoutGrid },
   { id: 'distribution', label: '总管分装', Icon: TestTubes },
+  { id: 'manuals', label: '说明书', Icon: BookOpen },
 ];
+
+const relatedManuals = manuals.filter((manual) => manual.relatedSopIds.includes('rna-qpcr'));
 
 function loadSession(): SessionState {
   try {
@@ -700,6 +706,22 @@ export default function RnaQpcrTool() {
           ) : (
             <div className="formula-warning"><CircleAlert size={18} /><p>当前 96 孔板没有可用于计算的完整引物—样本孔位。</p></div>
           )}
+        </section>
+      )}
+
+      {tab === 'manuals' && (
+        <section className="qpcr-panel sop-manuals-panel" aria-labelledby="sop-manuals-heading">
+          <div className="panel-heading">
+            <div>
+              <span className="section-kicker">RELATED MANUALS</span>
+              <h2 id="sop-manuals-heading">说明书</h2>
+              <p>本 SOP 使用或关联的产品说明书、仪器手册与引物文件。点击后可站内预览或下载原始 PDF。</p>
+            </div>
+            <span className="manual-count">{relatedManuals.length} 份文件</span>
+          </div>
+          <div className="manual-grid sop-manual-grid">
+            {relatedManuals.map((manual) => <ManualCard key={manual.id} manual={manual} compact />)}
+          </div>
         </section>
       )}
     </main>
