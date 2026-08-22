@@ -19,7 +19,7 @@ export const sops: SopEntry[] = [
   {
     id: 'rna-qpcr',
     title: '组织提 RNA（柱提法）+ qPCR',
-    description: '正式互动 SOP：批次初始化、逐步勾选、上样与体系计算、96 孔板设计及总管分装',
+    description: '正式互动 SOP：批次初始化、逐步勾选、上样、96 孔板设计及联动总管分装',
     category: '分子实验',
     kind: 'tool',
     hasPdf: true,

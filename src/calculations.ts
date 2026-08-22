@@ -109,30 +109,6 @@ export function calculateRnaLoadingBatch(
   };
 }
 
-export type QpcrMixResult = {
-  reactions: number;
-  sybr: number;
-  forwardPrimer: number;
-  reversePrimer: number;
-  water: number;
-  cdna: number;
-  total: number;
-};
-
-export function calculateQpcrMix(reactions: number): QpcrMixResult | null {
-  if (!Number.isInteger(reactions) || reactions <= 0) return null;
-
-  return {
-    reactions,
-    sybr: 5 * reactions,
-    forwardPrimer: 0.4 * reactions,
-    reversePrimer: 0.4 * reactions,
-    water: 2.2 * reactions,
-    cdna: 2 * reactions,
-    total: 10 * reactions,
-  };
-}
-
 export type PlateWell = {
   well: string;
   primer: string;
@@ -148,6 +124,36 @@ export type QpcrPlate = {
   primers: string[];
   wells: PlateWell[];
 };
+
+export type QpcrPlateAssignment = {
+  primer?: string;
+  sample?: string;
+};
+
+export type QpcrPlateUsage = {
+  primerCount: number;
+  sampleCount: number;
+};
+
+export function summarizeQpcrPlateUsage(
+  assignments: QpcrPlateAssignment[],
+): QpcrPlateUsage {
+  const primers = new Set<string>();
+  const samples = new Set<string>();
+
+  assignments.forEach((assignment) => {
+    const primer = assignment.primer?.trim();
+    const sample = assignment.sample?.trim();
+    if (!primer || !sample) return;
+    primers.add(primer);
+    if (sample.toUpperCase() !== 'NTC') samples.add(sample);
+  });
+
+  return {
+    primerCount: primers.size,
+    sampleCount: primers.size > 0 ? samples.size + 1 : 0,
+  };
+}
 
 const PLATE_ROWS = 'ABCDEFGH';
 const PLATE_COLUMNS = 12;
@@ -295,6 +301,7 @@ export function createQpcrPlateLayout(
 
 export type TubeDistributionResult = {
   reactionsPerGroup: number;
+  reactionsPerPrimerTube: number;
   theoreticalCommonReactions: number;
   commonPoolReactions: number;
   commonPool: {
@@ -308,6 +315,7 @@ export type TubeDistributionResult = {
     forwardPrimer: number;
     reversePrimer: number;
     total: number;
+    remainingAfterDistribution: number;
   };
   perSamplePrimerTube: {
     primerMix: number;
@@ -323,24 +331,33 @@ export function calculateTubeDistribution(
   sampleCount: number,
   replicates: number,
   excessReactionsPerGroup: number,
-  commonPoolReactions: number,
+  roundCommonPool: boolean,
+  roundPrimerTube: boolean,
 ): TubeDistributionResult | null {
-  const values = [primerCount, sampleCount, replicates, excessReactionsPerGroup, commonPoolReactions];
+  const values = [primerCount, sampleCount, replicates, excessReactionsPerGroup];
   if (values.some((value) => !Number.isInteger(value) || value < 0) || primerCount === 0 || sampleCount === 0 || replicates === 0) {
     return null;
   }
 
   const reactionsPerGroup = replicates + excessReactionsPerGroup;
   const theoreticalCommonReactions = primerCount * sampleCount * reactionsPerGroup;
-  if (commonPoolReactions < theoreticalCommonReactions) return null;
+  const theoreticalPrimerTubeReactions = sampleCount * reactionsPerGroup;
+  const reactionsPerPrimerTube = roundPrimerTube
+    ? Math.ceil(theoreticalPrimerTubeReactions / 10) * 10
+    : theoreticalPrimerTubeReactions;
+  const requiredCommonReactions = primerCount * reactionsPerPrimerTube;
+  const commonPoolReactions = roundCommonPool
+    ? Math.ceil(requiredCommonReactions / 10) * 10
+    : requiredCommonReactions;
 
-  const commonAliquot = 7.2 * sampleCount * reactionsPerGroup;
+  const commonAliquot = 7.2 * reactionsPerPrimerTube;
   const commonPoolTotal = 7.2 * commonPoolReactions;
   const primerMix = 8 * reactionsPerGroup;
   const cdnaOrNtcWater = 2 * reactionsPerGroup;
 
   return {
     reactionsPerGroup,
+    reactionsPerPrimerTube,
     theoreticalCommonReactions,
     commonPoolReactions,
     commonPool: {
@@ -351,9 +368,10 @@ export function calculateTubeDistribution(
     },
     perPrimerTube: {
       commonAliquot,
-      forwardPrimer: 0.4 * sampleCount * reactionsPerGroup,
-      reversePrimer: 0.4 * sampleCount * reactionsPerGroup,
-      total: 8 * sampleCount * reactionsPerGroup,
+      forwardPrimer: 0.4 * reactionsPerPrimerTube,
+      reversePrimer: 0.4 * reactionsPerPrimerTube,
+      total: 8 * reactionsPerPrimerTube,
+      remainingAfterDistribution: 8 * (reactionsPerPrimerTube - theoreticalPrimerTubeReactions),
     },
     perSamplePrimerTube: {
       primerMix,

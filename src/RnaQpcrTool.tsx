@@ -9,7 +9,6 @@ import {
   ClipboardCheck,
   Download,
   FileText,
-  FlaskConical,
   LayoutGrid,
   LockKeyhole,
   NotebookPen,
@@ -22,10 +21,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
-  calculateQpcrMix,
   calculateRnaLoadingBatch,
   calculateTubeDistribution,
   createQpcrPlateLayout,
+  summarizeQpcrPlateUsage,
   type RnaLoadingBatchResult,
 } from './calculations';
 import {
@@ -36,7 +35,7 @@ import {
   rnaQpcrSections,
 } from './rnaQpcrData';
 
-type ToolTab = 'setup' | 'guide' | 'plate' | 'mix' | 'distribution';
+type ToolTab = 'setup' | 'guide' | 'plate' | 'distribution';
 type PlateMode = 'auto' | 'manual';
 
 type ManualWell = {
@@ -83,7 +82,6 @@ const tabs: { id: ToolTab; label: string; Icon: typeof Settings2 }[] = [
   { id: 'setup', label: '初始化', Icon: Settings2 },
   { id: 'guide', label: '互动 SOP', Icon: ClipboardCheck },
   { id: 'plate', label: '96 孔板', Icon: LayoutGrid },
-  { id: 'mix', label: '体系计算', Icon: FlaskConical },
   { id: 'distribution', label: '总管分装', Icon: TestTubes },
 ];
 
@@ -148,7 +146,8 @@ export default function RnaQpcrTool() {
   const [guidePage, setGuidePage] = useState(0);
   const [session, setSession] = useState<SessionState>(loadSession);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
-  const [mixReactions, setMixReactions] = useState(140);
+  const [roundCommonPool, setRoundCommonPool] = useState(true);
+  const [roundPrimerTube, setRoundPrimerTube] = useState(false);
   const [manualPrimer, setManualPrimer] = useState(NO_MANUAL_ACTION);
   const [manualSample, setManualSample] = useState(NO_MANUAL_ACTION);
 
@@ -166,8 +165,6 @@ export default function RnaQpcrTool() {
   const hasPlateInitialization = allPrimers.length > 0 || initializedSamples.length > 0;
   const plannedWells = allPrimers.length * allSamples.length * session.replicates;
   const prepReactions = allPrimers.length * allSamples.length * (session.replicates + session.extraReactions);
-  const suggestedCommonReactions = Math.ceil((prepReactions + 1) / 10) * 10;
-  const [commonPoolReactions, setCommonPoolReactions] = useState(suggestedCommonReactions);
 
   const plateLayout = useMemo(
     () => createQpcrPlateLayout(
@@ -178,16 +175,24 @@ export default function RnaQpcrTool() {
     ),
     [allSamples, session.referencePrimer, session.replicates, session.targetPrimers],
   );
-  const mixResult = useMemo(() => calculateQpcrMix(mixReactions), [mixReactions]);
+  const plateUsage = useMemo(() => summarizeQpcrPlateUsage(
+    session.plateMode === 'auto'
+      ? (plateLayout?.flatMap((plate) => plate.wells) ?? [])
+      : session.manualPlates.flatMap((plate) => Object.values(plate.wells)),
+  ), [plateLayout, session.manualPlates, session.plateMode]);
+  const distributionPrepReactions = plateUsage.primerCount
+    * plateUsage.sampleCount
+    * (session.replicates + session.extraReactions);
   const distribution = useMemo(
     () => calculateTubeDistribution(
-      allPrimers.length,
-      allSamples.length,
+      plateUsage.primerCount,
+      plateUsage.sampleCount,
       session.replicates,
       session.extraReactions,
-      commonPoolReactions,
+      roundCommonPool,
+      roundPrimerTube,
     ),
-    [allPrimers.length, allSamples.length, commonPoolReactions, session.extraReactions, session.replicates],
+    [plateUsage.primerCount, plateUsage.sampleCount, roundCommonPool, roundPrimerTube, session.extraReactions, session.replicates],
   );
 
   useEffect(() => {
@@ -265,8 +270,8 @@ export default function RnaQpcrTool() {
     setSession({ ...defaultSession, manualPlates: manualPlatesFromAutoLayout(defaultPlateLayout) });
     setCompleted({});
     setGuidePage(0);
-    setMixReactions(140);
-    setCommonPoolReactions(150);
+    setRoundCommonPool(true);
+    setRoundPrimerTube(false);
     setManualPrimer(NO_MANUAL_ACTION);
     setManualSample(NO_MANUAL_ACTION);
   };
@@ -499,35 +504,29 @@ export default function RnaQpcrTool() {
         </section>
       )}
 
-      {tab === 'mix' && (
-        <section className="qpcr-panel">
-          <div className="panel-heading"><div><span className="section-kicker">10 μl / WELL</span><h2>qPCR 体系计算器</h2><p>按 PDF 每孔配方放大；NTC 的 2 μl cDNA 须替换为无酶无菌水。</p></div></div>
-          <div className="mix-input-row">
-            <label><span>配制反应数</span><input type="number" min="1" step="1" value={mixReactions} onChange={(event) => setMixReactions(Number(event.target.value))} /><b>份</b></label>
-            <button className="text-button" onClick={() => setMixReactions(prepReactions)}>使用本批次：{prepReactions} 份</button>
-          </div>
-          {mixResult && (
-            <div className="recipe-grid">
-              <RecipeCard label="SYBR" perWell="5 μl / 孔" total={mixResult.sybr} accent="teal" />
-              <RecipeCard label="正向引物" perWell="0.4 μl / 孔" total={mixResult.forwardPrimer} accent="violet" />
-              <RecipeCard label="反向引物" perWell="0.4 μl / 孔" total={mixResult.reversePrimer} accent="violet" />
-              <RecipeCard label="无酶无菌水" perWell="2.2 μl / 孔" total={mixResult.water} accent="blue" />
-              <RecipeCard label="cDNA / NTC 水" perWell="2 μl / 孔" total={mixResult.cdna} accent="amber" />
-              <div className="recipe-total"><small>体系总量</small><strong>{formatUl(mixResult.total)}</strong><span>{mixResult.reactions} × 10 μl</span></div>
-            </div>
-          )}
-        </section>
-      )}
-
       {tab === 'distribution' && (
         <section className="qpcr-panel">
-          <div className="panel-heading"><div><span className="section-kicker">MASTER MIX</span><h2>总管分装计算器</h2><p>按 PDF 的 ①总管 → ②引物管 → ③样本-引物管 三阶段展示。</p></div></div>
+          <div className="panel-heading"><div><span className="section-kicker">MASTER MIX</span><h2>总管分装计算器</h2><p>数据来自当前 96 孔板设计；手动排板时只统计同时设置了引物和样本的孔位。</p></div></div>
           <div className="distribution-summary">
-            <span>{allPrimers.length} 种引物</span><b>×</b><span>{allSamples.length} 份 cDNA/NTC</span><b>×</b><span>{session.replicates} 复孔 + {session.extraReactions} 冗余</span><b>=</b><strong>{prepReactions} 份</strong>
+            <span>{plateUsage.primerCount} 种实际上板引物</span><b>×</b><span>{plateUsage.sampleCount} 份实际上板样本（含 1 NTC）</span><b>×</b><span>{session.replicates} 复孔 + {session.extraReactions} 冗余</span><b>=</b><strong>{distributionPrepReactions} 份</strong>
           </div>
-          <div className="common-pool-control">
-            <label><span>①总管实际配制份数</span><input type="number" min={prepReactions} step="1" value={commonPoolReactions} onChange={(event) => setCommonPoolReactions(Number(event.target.value))} /><b>份</b></label>
-            <button className="text-button" onClick={() => setCommonPoolReactions(suggestedCommonReactions)}>向上留余：{suggestedCommonReactions} 份</button>
+          <div className="rounding-controls">
+            <label>
+              <input type="checkbox" checked={roundCommonPool} onChange={(event) => setRoundCommonPool(event.target.checked)} />
+              <span>①液向上取整至 10x</span>
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={roundPrimerTube}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setRoundPrimerTube(checked);
+                  if (checked) setRoundCommonPool(true);
+                }}
+              />
+              <span>②液向上取整至 10x（联动①液）</span>
+            </label>
           </div>
           {distribution ? (
             <div className="distribution-flow">
@@ -536,24 +535,29 @@ export default function RnaQpcrTool() {
                 ['无酶无菌水', formatUl(distribution.commonPool.water)],
                 ['合计', formatUl(distribution.commonPool.total)],
                 ['完成引物管分装后留余', formatUl(distribution.commonPool.remainingAfterDistribution)],
-              ]} footer={`按 ${distribution.commonPoolReactions} 份配制`} />
+              ]} footer={`配制倍数：${distribution.commonPoolReactions}x`} />
               <ChevronRight className="flow-arrow" size={26} />
               <DistributionStage number="②" title="每支引物管" rows={[
                 ['取①液', formatUl(distribution.perPrimerTube.commonAliquot)],
                 ['正向引物', formatUl(distribution.perPrimerTube.forwardPrimer)],
                 ['反向引物', formatUl(distribution.perPrimerTube.reversePrimer)],
                 ['合计', formatUl(distribution.perPrimerTube.total)],
-              ]} footer={`共分 ${allPrimers.length} 支引物管`} />
+                ['完成样本-引物管分装后留余', formatUl(distribution.perPrimerTube.remainingAfterDistribution)],
+              ]} footer={`配制倍数：${distribution.reactionsPerPrimerTube}x`} />
               <ChevronRight className="flow-arrow" size={26} />
               <DistributionStage number="③" title="每支样本-引物管" rows={[
                 ['取②液', formatUl(distribution.perSamplePrimerTube.primerMix)],
                 ['cDNA / NTC 水', formatUl(distribution.perSamplePrimerTube.cdnaOrNtcWater)],
                 ['合计', formatUl(distribution.perSamplePrimerTube.total)],
                 ['上板后留余', formatUl(distribution.perSamplePrimerTube.remaining)],
-              ]} footer={`上板 ${session.replicates} × 10 μl`} />
+              ]} footer={`共分 ${plateUsage.primerCount * plateUsage.sampleCount} 支`} />
+              <ChevronRight className="flow-arrow" size={26} />
+              <article className="distribution-stage plating-stage">
+                <div className="stage-heading"><span>④</span><h3>上板 {session.replicates} × 10 μl</h3></div>
+              </article>
             </div>
           ) : (
-            <div className="formula-warning"><CircleAlert size={18} /><p>①总管实际配制份数不能少于理论值 {prepReactions} 份。</p></div>
+            <div className="formula-warning"><CircleAlert size={18} /><p>当前 96 孔板没有可用于计算的完整引物—样本孔位。</p></div>
           )}
         </section>
       )}
@@ -845,10 +849,6 @@ function ManualPlateView({
       <div className="plate-foot"><span><i className="ntc-mark" />虚线 = NTC</span><span>点击孔位应用当前选择</span></div>
     </article>
   );
-}
-
-function RecipeCard({ label, perWell, total, accent }: { label: string; perWell: string; total: number; accent: string }) {
-  return <div className={`recipe-card ${accent}`}><small>{perWell}</small><strong>{formatUl(total)}</strong><span>{label}</span></div>;
 }
 
 function DistributionStage({ number, title, rows, footer }: { number: string; title: string; rows: [string, string][]; footer: string }) {

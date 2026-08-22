@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateCellSeeding,
   calculateDilution,
-  calculateQpcrMix,
   calculateRnaLoadingBatch,
   calculateTubeDistribution,
   createQpcrPlateLayout,
+  summarizeQpcrPlateUsage,
 } from './calculations';
 
 describe('calculateDilution', () => {
@@ -66,20 +66,6 @@ describe('calculateRnaLoadingBatch', () => {
   });
 });
 
-describe('calculateQpcrMix', () => {
-  it('scales the controlled 10 μl qPCR recipe', () => {
-    expect(calculateQpcrMix(4)).toEqual({
-      reactions: 4,
-      sybr: 20,
-      forwardPrimer: 1.6,
-      reversePrimer: 1.6,
-      water: 8.8,
-      cdna: 8,
-      total: 40,
-    });
-  });
-});
-
 describe('createQpcrPlateLayout', () => {
   it('balances target primers across plates and repeats the reference primer', () => {
     const layout = createQpcrPlateLayout(
@@ -131,16 +117,49 @@ describe('createQpcrPlateLayout', () => {
   });
 });
 
+describe('summarizeQpcrPlateUsage', () => {
+  it('counts unique complete plate assignments and always includes one NTC', () => {
+    expect(summarizeQpcrPlateUsage([
+      { primer: 'GAPDH', sample: 'S1' },
+      { primer: 'GAPDH', sample: 'S1' },
+      { primer: 'Gene 1', sample: 'S2' },
+      { primer: 'Gene 1', sample: 'NTC' },
+      { primer: 'Gene 2' },
+    ])).toEqual({ primerCount: 2, sampleCount: 3 });
+  });
+
+  it('does not add NTC before any complete assignment exists', () => {
+    expect(summarizeQpcrPlateUsage([{ primer: 'GAPDH' }])).toEqual({
+      primerCount: 0,
+      sampleCount: 0,
+    });
+  });
+});
+
 describe('calculateTubeDistribution', () => {
   it('matches the three-stage example in the source PDF', () => {
-    const result = calculateTubeDistribution(3, 7, 3, 1, 90);
+    const result = calculateTubeDistribution(3, 7, 3, 1, true, false);
 
     expect(result?.theoreticalCommonReactions).toBe(84);
+    expect(result?.commonPoolReactions).toBe(90);
+    expect(result?.reactionsPerPrimerTube).toBe(28);
     expect(result?.commonPool.sybr).toBe(450);
     expect(result?.commonPool.water).toBeCloseTo(198);
     expect(result?.perPrimerTube.commonAliquot).toBeCloseTo(201.6);
     expect(result?.perPrimerTube.forwardPrimer).toBeCloseTo(11.2);
     expect(result?.perSamplePrimerTube.total).toBe(40);
     expect(result?.perSamplePrimerTube.remaining).toBe(10);
+  });
+
+  it('links rounded primer tubes back to the common pool', () => {
+    const result = calculateTubeDistribution(3, 7, 3, 1, true, true);
+
+    expect(result?.reactionsPerPrimerTube).toBe(30);
+    expect(result?.commonPoolReactions).toBe(90);
+    expect(result?.perPrimerTube.commonAliquot).toBe(216);
+    expect(result?.perPrimerTube.forwardPrimer).toBe(12);
+    expect(result?.perPrimerTube.reversePrimer).toBe(12);
+    expect(result?.perPrimerTube.total).toBe(240);
+    expect(result?.perPrimerTube.remainingAfterDistribution).toBe(16);
   });
 });
