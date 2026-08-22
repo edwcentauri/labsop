@@ -37,6 +37,17 @@ import {
 } from './rnaQpcrData';
 
 type ToolTab = 'setup' | 'guide' | 'plate' | 'mix' | 'distribution';
+type PlateMode = 'auto' | 'manual';
+
+type ManualWell = {
+  primer?: string;
+  sample?: string;
+};
+
+type ManualPlate = {
+  number: number;
+  wells: Record<string, ManualWell>;
+};
 
 type SessionState = {
   referencePrimer: string;
@@ -46,9 +57,13 @@ type SessionState = {
   extraReactions: number;
   concentrations: string[];
   notes: Record<string, string>;
+  plateMode: PlateMode;
+  manualPlates: ManualPlate[];
 };
 
 const STORAGE_KEY = 'labsop:rna-qpcr-session:v1';
+const NO_MANUAL_ACTION = '__none__';
+const CLEAR_MANUAL_VALUE = '__clear__';
 
 const defaultSession: SessionState = {
   referencePrimer: '内参基因',
@@ -58,6 +73,8 @@ const defaultSession: SessionState = {
   extraReactions: 1,
   concentrations: ['', '', '', '', '', ''],
   notes: {},
+  plateMode: 'auto',
+  manualPlates: [{ number: 1, wells: {} }],
 };
 
 const tabs: { id: ToolTab; label: string; Icon: typeof Settings2 }[] = [
@@ -86,6 +103,10 @@ function loadSession(): SessionState {
         return typeof value === 'string' ? value : '';
       }),
       notes: parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {},
+      plateMode: parsed.plateMode === 'manual' ? 'manual' : 'auto',
+      manualPlates: Array.isArray(parsed.manualPlates) && parsed.manualPlates.length > 0
+        ? parsed.manualPlates
+        : defaultSession.manualPlates,
     };
   } catch {
     return defaultSession;
@@ -106,12 +127,21 @@ export default function RnaQpcrTool() {
   const [session, setSession] = useState<SessionState>(loadSession);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [mixReactions, setMixReactions] = useState(140);
+  const [manualPrimer, setManualPrimer] = useState(NO_MANUAL_ACTION);
+  const [manualSample, setManualSample] = useState(NO_MANUAL_ACTION);
 
-  const allSamples = useMemo(() => [...session.samples.filter((sample) => sample.trim()), 'NTC'], [session.samples]);
+  const initializedSamples = useMemo(
+    () => session.samples
+      .map((sample) => sample.trim())
+      .filter((sample) => sample && sample.toUpperCase() !== 'NTC'),
+    [session.samples],
+  );
+  const allSamples = useMemo(() => [...initializedSamples, 'NTC'], [initializedSamples]);
   const allPrimers = useMemo(
-    () => [session.referencePrimer, ...session.targetPrimers.filter((primer) => primer.trim())],
+    () => [session.referencePrimer, ...session.targetPrimers].map((primer) => primer.trim()).filter(Boolean),
     [session.referencePrimer, session.targetPrimers],
   );
+  const hasPlateInitialization = allPrimers.length > 0 || initializedSamples.length > 0;
   const plannedWells = allPrimers.length * allSamples.length * session.replicates;
   const prepReactions = allPrimers.length * allSamples.length * (session.replicates + session.extraReactions);
   const suggestedCommonReactions = Math.ceil((prepReactions + 1) / 10) * 10;
@@ -141,6 +171,35 @@ export default function RnaQpcrTool() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }, [session]);
+
+  useEffect(() => {
+    const allowedPrimers = new Set(allPrimers);
+    const allowedSamples = new Set(allSamples);
+    setManualPrimer((current) => current === NO_MANUAL_ACTION || current === CLEAR_MANUAL_VALUE || allowedPrimers.has(current)
+      ? current
+      : NO_MANUAL_ACTION);
+    setManualSample((current) => current === NO_MANUAL_ACTION || current === CLEAR_MANUAL_VALUE || allowedSamples.has(current)
+      ? current
+      : NO_MANUAL_ACTION);
+    setSession((current) => {
+      let changed = false;
+      const manualPlates = current.manualPlates.map((plate) => {
+        let plateChanged = false;
+        const wells: Record<string, ManualWell> = {};
+        Object.entries(plate.wells).forEach(([well, assignment]) => {
+          const primer = assignment.primer && allowedPrimers.has(assignment.primer) ? assignment.primer : undefined;
+          const sample = assignment.sample && allowedSamples.has(assignment.sample) ? assignment.sample : undefined;
+          if (primer !== assignment.primer || sample !== assignment.sample || (!primer && !sample)) {
+            changed = true;
+            plateChanged = true;
+          }
+          if (primer || sample) wells[well] = { primer, sample };
+        });
+        return plateChanged ? { ...plate, wells } : plate;
+      });
+      return changed ? { ...current, manualPlates } : current;
+    });
+  }, [allPrimers, allSamples]);
 
   const updateListItem = (field: 'targetPrimers' | 'samples', index: number, value: string) => {
     setSession((current) => field === 'targetPrimers'
@@ -177,6 +236,52 @@ export default function RnaQpcrTool() {
     setGuidePage(0);
     setMixReactions(140);
     setCommonPoolReactions(150);
+    setManualPrimer(NO_MANUAL_ACTION);
+    setManualSample(NO_MANUAL_ACTION);
+  };
+
+  const updateManualWell = (plateNumber: number, wellName: string) => {
+    if (manualPrimer === NO_MANUAL_ACTION && manualSample === NO_MANUAL_ACTION) return;
+    setSession((current) => ({
+      ...current,
+      manualPlates: current.manualPlates.map((plate) => {
+        if (plate.number !== plateNumber) return plate;
+        const existing = plate.wells[wellName] ?? {};
+        const primer = manualPrimer === NO_MANUAL_ACTION
+          ? existing.primer
+          : manualPrimer === CLEAR_MANUAL_VALUE ? undefined : manualPrimer;
+        const sample = manualSample === NO_MANUAL_ACTION
+          ? existing.sample
+          : manualSample === CLEAR_MANUAL_VALUE ? undefined : manualSample;
+        const wells = { ...plate.wells };
+        if (primer || sample) wells[wellName] = { primer, sample };
+        else delete wells[wellName];
+        return { ...plate, wells };
+      }),
+    }));
+  };
+
+  const addManualPlate = () => {
+    setSession((current) => ({
+      ...current,
+      manualPlates: [
+        ...current.manualPlates,
+        { number: (current.manualPlates.at(-1)?.number ?? 0) + 1, wells: {} },
+      ],
+    }));
+  };
+
+  const clearAllManualWells = () => {
+    setSession((current) => ({
+      ...current,
+      manualPlates: current.manualPlates.map((plate) => ({ ...plate, wells: {} })),
+    }));
+  };
+
+  const restoreManualDefaults = () => {
+    setSession((current) => ({ ...current, manualPlates: [{ number: 1, wells: {} }] }));
+    setManualPrimer(NO_MANUAL_ACTION);
+    setManualSample(NO_MANUAL_ACTION);
   };
 
   const selectTab = (nextTab: ToolTab) => {
@@ -283,9 +388,63 @@ export default function RnaQpcrTool() {
 
       {tab === 'plate' && (
         <section className="qpcr-panel plate-panel">
-          <div className="panel-heading"><div><span className="section-kicker">AUTO LAYOUT</span><h2>96 孔板设计器</h2><p>每块板均自动加入完整内参组；空间不足时按目的基因整组拆到下一块板。</p></div><div className="plate-count">{plateLayout?.length ?? 0} 块板</div></div>
-          {plateLayout ? plateLayout.map((plate) => <PlateView key={plate.number} plate={plate} />) : (
-            <div className="invalid-layout"><CircleAlert size={24} /><strong>当前设置无法按整组排入 96 孔板</strong><span>请减少样本数或复孔数后再试。</span></div>
+          <div className="panel-heading">
+            <div><span className="section-kicker">PLATE DESIGNER</span><h2>96 孔板设计器</h2><p>{session.plateMode === 'auto' ? '按初始化内容自动排板，并保证每块板都有完整内参和各引物 NTC。' : '选择要应用的引物和样本，再逐个点击孔位完成手动设置。'}</p></div>
+            <div className="plate-heading-actions">
+              <div className="plate-mode-switch" aria-label="排板方式">
+                <button disabled={!hasPlateInitialization} className={session.plateMode === 'auto' ? 'active' : ''} onClick={() => setSession((current) => ({ ...current, plateMode: 'auto' }))}>自动生成</button>
+                <button disabled={!hasPlateInitialization} className={session.plateMode === 'manual' ? 'active' : ''} onClick={() => setSession((current) => ({ ...current, plateMode: 'manual' }))}>手动设置</button>
+              </div>
+              <div className="plate-count">{!hasPlateInitialization ? 0 : session.plateMode === 'auto' ? (plateLayout?.length ?? 0) : session.manualPlates.length} 块板</div>
+            </div>
+          </div>
+          {!hasPlateInitialization ? (
+            <div className="invalid-layout initialization-required">
+              <CircleAlert size={24} />
+              <strong>请先初始化</strong>
+              <span>请返回“初始化”填写本次批次的引物和样本。</span>
+              <button className="text-button" onClick={() => selectTab('setup')}>前往初始化</button>
+            </div>
+          ) : session.plateMode === 'auto' ? (
+            plateLayout ? plateLayout.map((plate) => <PlateView key={plate.number} plate={plate} />) : (
+              <div className="invalid-layout"><CircleAlert size={24} /><strong>当前设置无法按规则排入 96 孔板</strong><span>可减少样本数或复孔数，或切换到手动设置。</span></div>
+            )
+          ) : (
+            <>
+              <div className="manual-plate-toolbar">
+                <label>
+                  <span>引物</span>
+                  <select value={manualPrimer} onChange={(event) => setManualPrimer(event.target.value)}>
+                    <option value={NO_MANUAL_ACTION}>无（不修改）</option>
+                    <option value={CLEAR_MANUAL_VALUE}>清空引物</option>
+                    {allPrimers.map((primer, index) => <option value={primer} key={`${primer}-${index}`}>{primer}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>样本</span>
+                  <select value={manualSample} onChange={(event) => setManualSample(event.target.value)}>
+                    <option value={NO_MANUAL_ACTION}>无（不修改）</option>
+                    <option value={CLEAR_MANUAL_VALUE}>清空样本</option>
+                    {allSamples.map((sample, index) => <option value={sample} key={`${sample}-${index}`}>{sample}</option>)}
+                  </select>
+                </label>
+                <div className="manual-toolbar-actions">
+                  <button type="button" onClick={clearAllManualWells} title="清空所有手动孔位，保留现有板数"><Trash2 size={15} />清空全部</button>
+                  <button type="button" onClick={restoreManualDefaults} title="恢复为一块空白手动板"><RotateCcw size={15} />恢复默认</button>
+                </div>
+                <p>点击孔位时，仅修改选择器中不是“无”的属性；保持“清空”可连续移除对应属性。</p>
+              </div>
+              {session.manualPlates.map((plate) => (
+                <ManualPlateView
+                  key={plate.number}
+                  plate={plate}
+                  primers={allPrimers}
+                  referencePrimer={session.referencePrimer.trim()}
+                  onWellClick={(wellName) => updateManualWell(plate.number, wellName)}
+                />
+              ))}
+              <button className="add-plate-button" onClick={addManualPlate}><Plus size={17} />新增96孔板</button>
+            </>
           )}
         </section>
       )}
@@ -575,6 +734,60 @@ function PlateView({ plate }: { plate: NonNullable<ReturnType<typeof createQpcrP
         </div>
       </div>
       <div className="plate-foot"><span><i className="ntc-mark" />虚线 = NTC</span><span>本板引物：{plate.primers.length} 组</span></div>
+    </article>
+  );
+}
+
+function ManualPlateView({
+  plate,
+  primers,
+  referencePrimer,
+  onWellClick,
+}: {
+  plate: ManualPlate;
+  primers: string[];
+  referencePrimer: string;
+  onWellClick: (wellName: string) => void;
+}) {
+  const rows = 'ABCDEFGH'.split('');
+  const filledWellCount = Object.keys(plate.wells).length;
+  return (
+    <article className="plate-card manual-plate-card">
+      <div className="plate-card-heading">
+        <div><span>MANUAL PLATE {plate.number.toString().padStart(2, '0')}</span><h3>96 孔板 {plate.number}</h3></div>
+        <strong>{filledWellCount} / 96 孔已设置</strong>
+      </div>
+      <div className="plate-legend">
+        {primers.map((primer, index) => <span key={`${primer}-${index}`}><i className={`well-color color-${index % 6}`} />{primer}{primer === referencePrimer ? '（内参）' : ''}</span>)}
+      </div>
+      <div className="plate-scroll">
+        <div className="plate-grid">
+          <span />
+          {Array.from({ length: 12 }, (_, index) => <b key={index}>{index + 1}</b>)}
+          {rows.flatMap((row) => [
+            <b key={`${row}-label`}>{row}</b>,
+            ...Array.from({ length: 12 }, (_, column) => {
+              const wellName = `${row}${column + 1}`;
+              const assignment = plate.wells[wellName];
+              const colorIndex = assignment?.primer ? primers.indexOf(assignment.primer) : -1;
+              const titleParts = [wellName, assignment?.primer, assignment?.sample].filter(Boolean);
+              return (
+                <button
+                  type="button"
+                  key={wellName}
+                  className={`plate-well manual-well ${assignment ? 'filled' : ''} ${colorIndex >= 0 ? `color-${colorIndex % 6}` : 'manual-unprimed'} ${assignment?.sample?.toUpperCase() === 'NTC' ? 'ntc' : ''}`}
+                  title={titleParts.join(' · ')}
+                  aria-label={`${wellName}${assignment ? `，引物 ${assignment.primer ?? '未设置'}，样本 ${assignment.sample ?? '未设置'}` : '，未设置'}`}
+                  onClick={() => onWellClick(wellName)}
+                >
+                  {assignment && <><span>{shortLabel(assignment.sample ?? '无样本')}</span><small>{shortLabel(assignment.primer ?? '无引物')}</small></>}
+                </button>
+              );
+            }),
+          ])}
+        </div>
+      </div>
+      <div className="plate-foot"><span><i className="ntc-mark" />虚线 = NTC</span><span>点击孔位应用当前选择</span></div>
     </article>
   );
 }
