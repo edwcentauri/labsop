@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   ArrowLeft,
   Bell,
@@ -24,6 +25,7 @@ import VersionHistoryDialog from './VersionHistoryDialog';
 const PdfViewer = lazy(() => import('./PdfViewer'));
 const latestAnnouncementDate = announcements[0].date;
 type ThemePreference = 'light' | 'dark' | 'auto';
+type HomeTab = 'tools' | 'manuals';
 
 const themeOptions = [
   { value: 'auto' as const, label: '自动', Icon: Laptop },
@@ -141,6 +143,7 @@ function HomePage() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('全部');
   const [manualTag, setManualTag] = useState('全部');
+  const [activeTab, setActiveTab] = useState<HomeTab>('tools');
   const categories = ['全部', ...Array.from(new Set(sops.map((sop) => sop.category)))];
 
   useEffect(() => {
@@ -176,6 +179,19 @@ function HomePage() {
     navigate(sop.kind === 'pdf' ? `/sop/${sop.id}/pdf` : `/sop/${sop.id}`);
   };
 
+  const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+
+    event.preventDefault();
+    let nextTab: HomeTab;
+    if (event.key === 'Home') nextTab = 'tools';
+    else if (event.key === 'End') nextTab = 'manuals';
+    else if (event.key === 'ArrowLeft') nextTab = activeTab === 'tools' ? 'manuals' : 'tools';
+    else nextTab = activeTab === 'manuals' ? 'tools' : 'manuals';
+    setActiveTab(nextTab);
+    document.getElementById(`home-${nextTab}-tab`)?.focus();
+  };
+
   return (
     <main>
       <section className="hero">
@@ -189,66 +205,97 @@ function HomePage() {
         </label>
       </section>
 
-      <section className="content-section">
-        <div className="section-heading">
-          <div><span className="section-kicker">ONLINE TOOLS</span><h2>在线工具</h2></div>
-          <span className="count">{filteredSops.length} 项可用</span>
+      <section className="content-section home-library" aria-label="实验室资源">
+        <div className="home-tabs" role="tablist" aria-label="资源类型">
+          <button
+            type="button"
+            id="home-tools-tab"
+            className={`home-tab ${activeTab === 'tools' ? 'active' : ''}`}
+            role="tab"
+            aria-selected={activeTab === 'tools'}
+            aria-controls="home-tools-panel"
+            tabIndex={activeTab === 'tools' ? 0 : -1}
+            onClick={() => setActiveTab('tools')}
+            onKeyDown={handleTabKeyDown}
+          >
+            <FileText size={19} aria-hidden="true" />
+            <span><small>ONLINE TOOLS</small><strong>在线工具</strong></span>
+            <span className="home-tab-count">{filteredSops.length}</span>
+          </button>
+          <button
+            type="button"
+            id="home-manuals-tab"
+            className={`home-tab ${activeTab === 'manuals' ? 'active' : ''}`}
+            role="tab"
+            aria-selected={activeTab === 'manuals'}
+            aria-controls="home-manuals-panel"
+            tabIndex={activeTab === 'manuals' ? 0 : -1}
+            onClick={() => setActiveTab('manuals')}
+            onKeyDown={handleTabKeyDown}
+          >
+            <BookOpen size={19} aria-hidden="true" />
+            <span><small>MANUAL LIBRARY</small><strong>说明书</strong></span>
+            <span className="home-tab-count">{filteredManuals.length}</span>
+          </button>
         </div>
-        <div className="filter-row" aria-label="分类筛选">
-          {categories.map((item) => (
-            <button key={item} className={`filter ${category === item ? 'active' : ''}`} onClick={() => setCategory(item)}>{item}</button>
-          ))}
-        </div>
-        {filteredSops.length ? (
-          <div className="tool-grid">
-            {filteredSops.map((sop) => {
-              return (
-                <button className="tool-card" key={sop.id} onClick={() => openSop(sop)}>
-                  <span className={`tool-icon ${sop.accent}`}><FileText size={22} /></span>
-                  <span className="tool-copy">
-                    <span className="category">{sop.category}</span>
-                    <strong>{sop.title}</strong>
-                    <span className="description">{sop.description}</span>
-                    <span className="tool-meta">
-                      {sop.kind === 'tool' ? '交互工具' : 'PDF SOP'}
-                      {sop.hasPdf && sop.kind === 'tool' ? ' · 含 PDF' : ''}
-                      {sop.version ? ` · ${sop.version}` : ''}
-                    </span>
-                  </span>
-                  <ChevronRight className="chevron" size={20} />
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="empty-state"><Search size={25} /><strong>没有找到匹配内容</strong><span>换一个关键词或分类试试。</span></div>
-        )}
-      </section>
 
-      <section className="content-section manuals-section" aria-labelledby="manuals-heading">
-        <div className="section-heading">
-          <div><span className="section-kicker">MANUAL LIBRARY</span><h2 id="manuals-heading">说明书</h2></div>
-          <span className="count">{filteredManuals.length} 份文件</span>
-        </div>
-        <div className="filter-row" aria-label="说明书分类筛选">
-          {['全部', ...manualTags].map((tag) => (
-            <button
-              type="button"
-              key={tag}
-              className={`filter ${manualTag === tag ? 'active' : ''}`}
-              onClick={() => setManualTag(tag)}
-              aria-pressed={manualTag === tag}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-        {filteredManuals.length ? (
-          <div className="manual-grid">
-            {filteredManuals.map((manual) => <ManualCard key={manual.id} manual={manual} />)}
+        {activeTab === 'tools' ? (
+          <div id="home-tools-panel" className="home-tab-panel" role="tabpanel" aria-labelledby="home-tools-tab">
+            <div className="panel-summary"><span>在线工具与 SOP</span><span className="count">{filteredSops.length} 项可用</span></div>
+            <div className="filter-row" aria-label="分类筛选">
+              {categories.map((item) => (
+                <button key={item} className={`filter ${category === item ? 'active' : ''}`} onClick={() => setCategory(item)}>{item}</button>
+              ))}
+            </div>
+            {filteredSops.length ? (
+              <div className="tool-grid">
+                {filteredSops.map((sop) => {
+                  return (
+                    <button className="tool-card" key={sop.id} onClick={() => openSop(sop)}>
+                      <span className={`tool-icon ${sop.accent}`}><FileText size={22} /></span>
+                      <span className="tool-copy">
+                        <span className="category">{sop.category}</span>
+                        <strong>{sop.title}</strong>
+                        <span className="description">{sop.description}</span>
+                        <span className="tool-meta">
+                          {sop.kind === 'tool' ? '交互工具' : 'PDF SOP'}
+                          {sop.hasPdf && sop.kind === 'tool' ? ' · 含 PDF' : ''}
+                          {sop.version ? ` · ${sop.version}` : ''}
+                        </span>
+                      </span>
+                      <ChevronRight className="chevron" size={20} />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-state"><Search size={25} /><strong>没有找到匹配内容</strong><span>换一个关键词或分类试试。</span></div>
+            )}
           </div>
         ) : (
-          <div className="empty-state"><Search size={25} /><strong>没有找到匹配说明书</strong><span>换一个关键词或分类试试。</span></div>
+          <div id="home-manuals-panel" className="home-tab-panel" role="tabpanel" aria-labelledby="home-manuals-tab">
+            <div className="panel-summary"><span>设备与试剂说明书</span><span className="count">{filteredManuals.length} 份文件</span></div>
+            <div className="filter-row" aria-label="说明书分类筛选">
+              {['全部', ...manualTags].map((tag) => (
+                <button
+                  type="button"
+                  key={tag}
+                  className={`filter ${manualTag === tag ? 'active' : ''}`}
+                  onClick={() => setManualTag(tag)}
+                  aria-pressed={manualTag === tag}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            {filteredManuals.length ? (
+              <div className="manual-grid">
+                {filteredManuals.map((manual) => <ManualCard key={manual.id} manual={manual} />)}
+              </div>
+            ) : (
+              <div className="empty-state"><Search size={25} /><strong>没有找到匹配说明书</strong><span>换一个关键词或分类试试。</span></div>
+            )}
+          </div>
         )}
       </section>
     </main>
