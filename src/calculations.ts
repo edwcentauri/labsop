@@ -73,21 +73,39 @@ export type RnaLoadingResult = {
   totalVolume: ReverseTranscriptionSystem;
 };
 
-export function calculateRnaLoading(
-  concentrationNgPerUl: number,
-): RnaLoadingResult | null {
-  if (concentrationNgPerUl <= 0) return null;
+export type RnaLoadingBatchResult = {
+  systemVolume: ReverseTranscriptionSystem;
+  samples: Array<RnaLoadingResult | null>;
+  hasOverflow: boolean;
+};
 
-  const rnaVolume = 1000 / concentrationNgPerUl;
-  const systemVolume: ReverseTranscriptionSystem = rnaVolume <= 8 ? 10 : 16;
-  const waterVolume = systemVolume - 2 - rnaVolume;
-  if (waterVolume < 0) return null;
+export function calculateRnaLoadingBatch(
+  concentrationsNgPerUl: number[],
+): RnaLoadingBatchResult | null {
+  if (
+    concentrationsNgPerUl.length === 0 ||
+    concentrationsNgPerUl.some((concentration) => !Number.isFinite(concentration) || concentration <= 0)
+  ) {
+    return null;
+  }
+
+  const rnaVolumes = concentrationsNgPerUl.map((concentration) => 1000 / concentration);
+  const systemVolume: ReverseTranscriptionSystem = rnaVolumes.some((volume) => volume > 8) ? 16 : 10;
+  const samples = rnaVolumes.map((rnaVolume): RnaLoadingResult | null => {
+    const waterVolume = systemVolume - 2 - rnaVolume;
+    if (waterVolume < 0) return null;
+    return {
+      rnaVolume,
+      gdnaCleanMixVolume: 2,
+      waterVolume,
+      totalVolume: systemVolume,
+    };
+  });
 
   return {
-    rnaVolume,
-    gdnaCleanMixVolume: 2,
-    waterVolume,
-    totalVolume: systemVolume,
+    systemVolume,
+    samples,
+    hasOverflow: samples.some((sample) => sample === null),
   };
 }
 

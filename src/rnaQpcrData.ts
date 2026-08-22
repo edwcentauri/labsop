@@ -12,12 +12,35 @@ export type InteractiveSopSection = {
   items: InteractiveSopItem[];
 };
 
+export const RNA_QPCR_PDF_FILE_NAME = '组织提RNA（柱提法）+qPCR ver.20260822.pdf';
+export const RNA_QPCR_PDF_PATH = `pdfs/${RNA_QPCR_PDF_FILE_NAME}`;
+export const RNA_QPCR_VERSION = /ver\.(\d{8})/i.exec(RNA_QPCR_PDF_FILE_NAME)?.[1] ?? '未知版本';
+
+export const reverseTranscriptionBranches = {
+  10: {
+    title: '10 μl 统一体系流程',
+    steps: [
+      { title: '3A · 去除 gDNA 配液', text: '每孔加入 2 μl gDNA Clean Mix、计算所得 RNA 样品，并以无酶无菌水补足至 10 μl。' },
+      { title: '4A · 第一次 PCR', text: '运行 SZH/CDNA 1 程序，体系容积 10 μl，约 4 分钟。' },
+      { title: '5A · 逆转录', text: '每孔加入 4 μl RT Reaction Mix 和 6 μl 无酶无菌水，配制成 20 μl 体系。混匀、离心后运行 SZH/CDNA 2 程序，体系容积 20 μl，约 16 分钟，得到逆转录后的 cDNA。' },
+    ],
+  },
+  16: {
+    title: '16 μl 统一体系流程',
+    steps: [
+      { title: '3B · 去除 gDNA 配液', text: '每孔加入 2 μl gDNA Clean Mix、计算所得 RNA 样品，并以无酶无菌水补足至 16 μl。' },
+      { title: '4B · 第一次 PCR', text: '运行 SZH/CDNA 1 程序，体系容积 16 μl，约 4 分钟。' },
+      { title: '5B · 逆转录', text: '每孔加入 4 μl RT Reaction Mix，不再补水，配制成 20 μl 体系。混匀、离心后运行 SZH/CDNA 2 程序，体系容积 20 μl，约 16 分钟，得到逆转录后的 cDNA。' },
+    ],
+  },
+} as const;
+
 export const rnaQpcrSections: InteractiveSopSection[] = [
   {
     id: 'rna-extraction',
     kicker: '01 · RNA EXTRACTION',
     title: '使用 AG RNA 试剂盒提取',
-    summary: '按原 PDF 顺序完成样本处理、柱纯化、洗涤与洗脱。',
+    summary: '按网页当前受控顺序完成样本处理、柱纯化、洗涤与洗脱。',
     items: [
       { text: '从 -80℃ 冰箱取出所需样本，预冷研磨机（“肌肉”程序），预冷离心机（4℃）。' },
       { text: '取对应数量 2 ml 研磨管，做好标记，每个组织取小米大小。' },
@@ -49,20 +72,11 @@ export const rnaQpcrSections: InteractiveSopSection[] = [
     id: 'reverse-transcription',
     kicker: '03 · REVERSE TRANSCRIPTION',
     title: '逆转录',
-    summary: '按已录入的浓度自动选择体系并展示上样方案，随后完成去 gDNA 与逆转录程序。',
+    summary: '按全批次浓度选择统一体系，并在第 3 步执行对应的完整独立流程。',
     items: [
       { text: '使用艾本德移液枪进行后续步骤。' },
       { text: '准备八连排，按 1 μg RNA 计算，上样量为 1000 ÷ 样品浓度，精确到 0.01（10 μl 枪精度）。' },
-      {
-        text: '配制 10 μl PCR 体系以去除 gDNA，每孔：',
-        details: ['2 μl gDNA Clean Mix', '（上样量）μl 样品', '（8 - 上样量）μl 无酶无菌水'],
-        warning: 'PDF 另列：若上样量大于 8 μl，则配制 16 μl 体系，每孔为 2 μl gDNA Clean Mix、（上样量）μl 样品、（16 - 上样量）μl 无酶无菌水。该列示相加为 18 μl，与标称总量不一致，执行前须确认受控版本。',
-      },
-      { text: 'PCR（SZH/CDNA 1 程序，10 μl，约 4 分钟）。16 μl 体系使用 SZH/CDNA 1 程序，16 μl，约 4 分钟。' },
-      {
-        text: '加入 4 μl RT Reaction Mix，补 10 μl 无酶无菌水（16 μl 体系不补），配制成 20 μl PCR 体系，混匀、离心，PCR（SZH/CDNA 2 程序，20 μl，约 16 分钟），得到逆转录后的 cDNA。',
-        warning: 'PDF 中 10 μl 起始体系、4 μl RT Reaction Mix 与“补 10 μl”相加为 24 μl，与标称 20 μl 不一致，执行前须确认受控版本。',
-      },
+      { text: '根据本批次统一体系，按下方上样方案配制去 gDNA 体系，并完整执行对应的 10 μl 或 16 μl 独立流程。' },
       { text: '可保存于 -20℃ 冰箱。如要稀释，可取 1.5 ml 离心管，最多稀释 100 倍。' },
     ],
   },
