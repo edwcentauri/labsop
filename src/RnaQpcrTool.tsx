@@ -122,8 +122,12 @@ function formatUl(value: number): string {
   return `${value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')} μl`;
 }
 
-function shortLabel(value: string): string {
-  return value.length > 5 ? `${value.slice(0, 4)}…` : value;
+function fittedWellFontSize(value: string, maximumSize: number): string {
+  const widthUnits = Array.from(value).reduce(
+    (total, character) => total + ((character.codePointAt(0) ?? 0) > 255 ? 1 : 0.55),
+    0,
+  );
+  return `${Math.min(maximumSize, 34 / Math.max(widthUnits, 1))}px`;
 }
 
 function manualPlatesFromAutoLayout(
@@ -756,8 +760,8 @@ function PlateView({ plate }: { plate: NonNullable<ReturnType<typeof createQpcrP
               const wellName = `${row}${column + 1}`;
               const assignment = assignments.get(wellName);
               return (
-                <div key={wellName} className={`plate-well ${assignment ? `filled color-${assignment.colorIndex % 6}` : ''} ${assignment?.isNtc ? 'ntc' : ''}`} title={assignment ? `${assignment.well} · ${assignment.primer} · ${assignment.sample} · 复孔 ${assignment.replicate}` : wellName}>
-                  {assignment && <><span>{shortLabel(assignment.sample)}</span><small>{assignment.replicate}</small></>}
+                <div key={wellName} className={`plate-well ${assignment ? `filled color-${assignment.colorIndex % 6}` : ''} ${assignment?.isNtc ? 'ntc' : ''}`} title={assignment ? `${assignment.well} · 引物：${assignment.primer} · 样本：${assignment.sample}` : wellName}>
+                  {assignment && <><span><i>样</i><b style={{ fontSize: fittedWellFontSize(assignment.sample, 8) }}>{assignment.sample}</b></span><small><i>引</i><b style={{ fontSize: fittedWellFontSize(assignment.primer, 7) }}>{assignment.primer}</b></small></>}
                 </div>
               );
             }),
@@ -811,7 +815,7 @@ function ManualPlateView({
                   aria-label={`${wellName}${assignment ? `，引物 ${assignment.primer ?? '未设置'}，样本 ${assignment.sample ?? '未设置'}` : '，未设置'}`}
                   onClick={() => onWellClick(wellName)}
                 >
-                  {assignment && <><span>{shortLabel(assignment.sample ?? '无样本')}</span><small>{shortLabel(assignment.primer ?? '无引物')}</small></>}
+                  {assignment && <><span><i>样</i><b style={{ fontSize: fittedWellFontSize(assignment.sample ?? '未设置', 8) }}>{assignment.sample ?? '未设置'}</b></span><small><i>引</i><b style={{ fontSize: fittedWellFontSize(assignment.primer ?? '未设置', 7) }}>{assignment.primer ?? '未设置'}</b></small></>}
                 </button>
               );
             }),
