@@ -131,27 +131,31 @@ export type QpcrPlateAssignment = {
 };
 
 export type QpcrPlateUsage = {
-  primerCount: number;
+  primerGroupCount: number;
   sampleCount: number;
 };
 
 export function summarizeQpcrPlateUsage(
-  assignments: QpcrPlateAssignment[],
+  plates: QpcrPlateAssignment[][],
 ): QpcrPlateUsage {
-  const primers = new Set<string>();
   const samples = new Set<string>();
+  let primerGroupCount = 0;
 
-  assignments.forEach((assignment) => {
-    const primer = assignment.primer?.trim();
-    const sample = assignment.sample?.trim();
-    if (!primer || !sample) return;
-    primers.add(primer);
-    if (sample.toUpperCase() !== 'NTC') samples.add(sample);
+  plates.forEach((assignments) => {
+    const platePrimers = new Set<string>();
+    assignments.forEach((assignment) => {
+      const primer = assignment.primer?.trim();
+      const sample = assignment.sample?.trim();
+      if (!primer || !sample) return;
+      platePrimers.add(primer);
+      if (sample.toUpperCase() !== 'NTC') samples.add(sample);
+    });
+    primerGroupCount += platePrimers.size;
   });
 
   return {
-    primerCount: primers.size,
-    sampleCount: primers.size > 0 ? samples.size + 1 : 0,
+    primerGroupCount,
+    sampleCount: primerGroupCount > 0 ? samples.size + 1 : 0,
   };
 }
 
@@ -327,25 +331,25 @@ export type TubeDistributionResult = {
 };
 
 export function calculateTubeDistribution(
-  primerCount: number,
+  primerGroupCount: number,
   sampleCount: number,
   replicates: number,
   excessReactionsPerGroup: number,
   roundCommonPool: boolean,
   roundPrimerTube: boolean,
 ): TubeDistributionResult | null {
-  const values = [primerCount, sampleCount, replicates, excessReactionsPerGroup];
-  if (values.some((value) => !Number.isInteger(value) || value < 0) || primerCount === 0 || sampleCount === 0 || replicates === 0) {
+  const values = [primerGroupCount, sampleCount, replicates, excessReactionsPerGroup];
+  if (values.some((value) => !Number.isInteger(value) || value < 0) || primerGroupCount === 0 || sampleCount === 0 || replicates === 0) {
     return null;
   }
 
   const reactionsPerGroup = replicates + excessReactionsPerGroup;
-  const theoreticalCommonReactions = primerCount * sampleCount * reactionsPerGroup;
+  const theoreticalCommonReactions = primerGroupCount * sampleCount * reactionsPerGroup;
   const theoreticalPrimerTubeReactions = sampleCount * reactionsPerGroup;
   const reactionsPerPrimerTube = roundPrimerTube
     ? Math.ceil(theoreticalPrimerTubeReactions / 10) * 10
     : theoreticalPrimerTubeReactions;
-  const requiredCommonReactions = primerCount * reactionsPerPrimerTube;
+  const requiredCommonReactions = primerGroupCount * reactionsPerPrimerTube;
   const commonPoolReactions = roundCommonPool
     ? Math.ceil(requiredCommonReactions / 10) * 10
     : requiredCommonReactions;
@@ -364,7 +368,7 @@ export function calculateTubeDistribution(
       sybr: 5 * commonPoolReactions,
       water: 2.2 * commonPoolReactions,
       total: commonPoolTotal,
-      remainingAfterDistribution: commonPoolTotal - commonAliquot * primerCount,
+      remainingAfterDistribution: commonPoolTotal - commonAliquot * primerGroupCount,
     },
     perPrimerTube: {
       commonAliquot,
