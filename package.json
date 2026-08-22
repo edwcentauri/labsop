@@ -7,8 +7,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ignore-pattern dist",
-    "test": "vitest run",
-    "generate:pdfs": "node scripts/generate-demo-pdfs.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

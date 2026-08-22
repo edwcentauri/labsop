@@ -1,14 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
-  Beaker,
   Bell,
-  Calculator,
-  CheckCircle2,
   ChevronRight,
   FileText,
-  FlaskConical,
-  Info,
   Laptop,
   Moon,
   Search,
@@ -18,7 +13,6 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
-import { calculateCellSeeding, calculateDilution, formatVolume } from './calculations';
 import { announcements, sops, type SopEntry } from './data';
 import RnaQpcrTool from './RnaQpcrTool';
 
@@ -193,10 +187,9 @@ function HomePage() {
         {filteredSops.length ? (
           <div className="tool-grid">
             {filteredSops.map((sop) => {
-              const Icon = sop.id === 'dilution' ? Calculator : sop.id === 'cell-seeding' ? Beaker : FileText;
               return (
                 <button className="tool-card" key={sop.id} onClick={() => openSop(sop)}>
-                  <span className={`tool-icon ${sop.accent}`}><Icon size={22} /></span>
+                  <span className={`tool-icon ${sop.accent}`}><FileText size={22} /></span>
                   <span className="tool-copy">
                     <span className="category">{sop.category}</span>
                     <strong>{sop.title}</strong>
@@ -233,96 +226,6 @@ function ToolHeader({ title, category, version, pdfLink }: { title: string; cate
         {pdfLink && <Link className="secondary-button" to={pdfLink}><FileText size={18} />查看 PDF 版</Link>}
       </div>
     </div>
-  );
-}
-
-function NumberField({ label, value, onChange, unit, hint }: { label: string; value: number; onChange: (value: number) => void; unit: string; hint?: string }) {
-  return (
-    <label className="number-field">
-      <span>{label}</span>
-      <div><input type="number" inputMode="decimal" min="0" value={value} onChange={(event) => onChange(Number(event.target.value))} /><b>{unit}</b></div>
-      {hint && <small>{hint}</small>}
-    </label>
-  );
-}
-
-function DilutionTool() {
-  const [stock, setStock] = useState(1000);
-  const [target, setTarget] = useState(10);
-  const [volume, setVolume] = useState(50);
-  const result = calculateDilution(stock, target, volume);
-
-  return (
-    <main className="detail-page">
-      <ToolHeader title="溶液稀释计算" category="试剂配制" version="v2.1" pdfLink="/sop/dilution/pdf" />
-      <div className="calculator-layout">
-        <section className="calculator-card">
-          <div className="card-title"><span className="tool-icon teal"><FlaskConical size={22} /></span><div><h2>输入实验参数</h2><p>浓度单位须保持一致</p></div></div>
-          <div className="field-grid">
-            <NumberField label="母液浓度 C₁" value={stock} onChange={setStock} unit="mM" />
-            <NumberField label="目标浓度 C₂" value={target} onChange={setTarget} unit="mM" />
-            <NumberField label="目标总体积 V₂" value={volume} onChange={setVolume} unit="mL" />
-          </div>
-          <div className="formula-line"><span>C₁ × V₁</span><b>=</b><span>C₂ × V₂</span></div>
-        </section>
-        <aside className={`result-card ${result ? '' : 'invalid'}`}>
-          <span className="result-eyebrow">CALCULATION RESULT</span>
-          {result ? (
-            <>
-              <CheckCircle2 size={27} />
-              <h2>配制结果</h2>
-              <div className="result-primary"><strong>{formatVolume(result.stockVolume)}</strong><span>母液</span></div>
-              <div className="result-secondary"><span>加入稀释液</span><strong>{formatVolume(result.diluentVolume)}</strong></div>
-              <p>最终体积 {formatVolume(volume)}</p>
-            </>
-          ) : (
-            <><Info size={27} /><h2>无法计算</h2><p>目标浓度不能高于母液浓度，所有数值必须大于 0。</p></>
-          )}
-        </aside>
-      </div>
-      <div className="safety-note"><Info size={18} /><p><strong>使用提示</strong>计算结果应结合当前有效 SOP 和实际实验条件复核；本工具不替代实验审批与安全检查。</p></div>
-    </main>
-  );
-}
-
-function CellSeedingTool() {
-  const [target, setTarget] = useState(100000);
-  const [wells, setWells] = useState(6);
-  const [concentration, setConcentration] = useState(1000000);
-  const [wellVolume, setWellVolume] = useState(2);
-  const [excess, setExcess] = useState(10);
-  const result = calculateCellSeeding(target, wells, concentration, wellVolume, excess);
-
-  return (
-    <main className="detail-page">
-      <ToolHeader title="细胞铺板计算" category="细胞实验" />
-      <div className="calculator-layout">
-        <section className="calculator-card">
-          <div className="card-title"><span className="tool-icon violet"><Beaker size={22} /></span><div><h2>输入铺板参数</h2><p>系统会自动加入损耗余量</p></div></div>
-          <div className="field-grid two-columns">
-            <NumberField label="目标细胞数／孔" value={target} onChange={setTarget} unit="cells" />
-            <NumberField label="铺板孔数" value={wells} onChange={setWells} unit="孔" />
-            <NumberField label="细胞悬液浓度" value={concentration} onChange={setConcentration} unit="cells/mL" />
-            <NumberField label="每孔总体积" value={wellVolume} onChange={setWellVolume} unit="mL" />
-            <NumberField label="损耗余量" value={excess} onChange={setExcess} unit="%" hint="建议 10%" />
-          </div>
-        </section>
-        <aside className={`result-card violet-result ${result ? '' : 'invalid'}`}>
-          <span className="result-eyebrow">SEEDING RESULT</span>
-          {result ? (
-            <>
-              <CheckCircle2 size={27} /><h2>混悬液配制</h2>
-              <div className="result-primary"><strong>{formatVolume(result.suspensionVolume)}</strong><span>细胞悬液</span></div>
-              <div className="result-secondary"><span>培养基</span><strong>{formatVolume(result.mediumVolume)}</strong></div>
-              <p>共 {result.totalCells.toLocaleString()} 个细胞 · 总体积 {formatVolume(result.totalVolume)}</p>
-            </>
-          ) : (
-            <><Info size={27} /><h2>无法计算</h2><p>请检查输入值；细胞悬液体积不能超过配制总体积。</p></>
-          )}
-        </aside>
-      </div>
-      <div className="safety-note"><Info size={18} /><p><strong>使用提示</strong>铺板前请重新计数并确认细胞活率。计算结果保留在当前设备，不会上传。</p></div>
-    </main>
   );
 }
 
@@ -381,8 +284,6 @@ export default function App() {
       <AppHeader onOpenAnnouncements={openDrawer} hasUnread={hasUnread} />
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/sop/dilution" element={<DilutionTool />} />
-        <Route path="/sop/cell-seeding" element={<CellSeedingTool />} />
         <Route path="/sop/rna-qpcr" element={<RnaQpcrTool />} />
         <Route path="/sop/:id/pdf" element={<PdfPage />} />
         <Route path="/announcements/:slug" element={<AnnouncementPage />} />

@@ -124,37 +124,6 @@ button { color: inherit; }
 .detail-title-row p { margin: 10px 0 0; color: #738581; font-size: 12px; }
 .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 1px solid #c9d9d5; border-radius: 13px; color: #0e6861; background: white; font-size: 13px; font-weight: 700; text-decoration: none; box-shadow: 0 6px 18px #284a430b; }
 
-.calculator-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr); gap: 18px; align-items: stretch; }
-.calculator-card { padding: 30px; border: 1px solid #dce6e2; border-radius: 26px; background: white; box-shadow: 0 12px 35px #294d450c; }
-.card-title { display: flex; align-items: center; gap: 14px; padding-bottom: 24px; border-bottom: 1px solid #edf1ef; }
-.card-title h2 { margin: 0; font-size: 18px; }
-.card-title p { margin: 4px 0 0; color: #81908d; font-size: 12px; }
-.field-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
-.field-grid.two-columns { grid-template-columns: repeat(2, 1fr); }
-.number-field { display: flex; flex-direction: column; gap: 8px; color: #4d6460; font-size: 12px; font-weight: 600; }
-.number-field > div { display: flex; align-items: center; height: 54px; padding: 0 12px 0 15px; border: 1px solid #d8e2df; border-radius: 13px; background: #fafcfb; transition: border-color .15s, box-shadow .15s; }
-.number-field > div:focus-within { border-color: #50a79e; box-shadow: 0 0 0 3px #0f766e16; }
-.number-field input { width: 100%; min-width: 0; border: 0; outline: 0; color: #193b37; background: transparent; font-size: 17px; font-weight: 650; }
-.number-field b { color: #82918e; font-size: 11px; font-weight: 500; white-space: nowrap; }
-.number-field small { color: #879693; font-weight: 400; }
-.formula-line { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 30px; padding: 17px; border-radius: 14px; color: #58736e; background: #f1f6f4; font-family: ui-monospace, monospace; font-size: 13px; }
-.result-card { display: flex; flex-direction: column; padding: 30px; border-radius: 26px; color: white; background: linear-gradient(150deg, #0a4d48, #0f766e); box-shadow: 0 20px 42px #0d5f562d; }
-.result-card.violet-result { background: linear-gradient(150deg, #493b76, #6c58a4); box-shadow: 0 20px 42px #55418726; }
-.result-card.invalid { background: linear-gradient(150deg, #5c6563, #76817e); }
-.result-eyebrow { margin-bottom: 25px; color: #bce2da; font-size: 9px; font-weight: 700; letter-spacing: .15em; }
-.result-card h2 { margin: 12px 0 26px; font-size: 20px; }
-.result-primary { display: flex; flex-direction: column; padding-bottom: 22px; border-bottom: 1px solid #ffffff26; }
-.result-primary strong { font-size: 38px; line-height: 1; letter-spacing: -.04em; }
-.result-primary span { margin-top: 8px; color: #c9e3de; font-size: 11px; }
-.result-secondary { display: flex; align-items: center; justify-content: space-between; margin-top: 19px; }
-.result-secondary span { color: #c9e3de; font-size: 12px; }
-.result-secondary strong { font-size: 18px; }
-.result-card > p { margin: auto 0 0; padding-top: 26px; color: #c4dfd9; font-size: 11px; line-height: 1.6; }
-.safety-note { display: flex; align-items: flex-start; gap: 12px; margin-top: 18px; padding: 17px 20px; border: 1px solid #e6dfc9; border-radius: 16px; color: #6f674d; background: #fffaf0; }
-.safety-note svg { flex: 0 0 auto; margin-top: 2px; }
-.safety-note p { margin: 0; font-size: 12px; line-height: 1.7; }
-.safety-note strong { margin-right: 8px; color: #4e4a3c; }
-
 .document-meta { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; color: #728480; font-size: 12px; }
 .document-meta span { display: flex; align-items: center; gap: 7px; }
 .pdf-viewer { overflow: hidden; border: 1px solid #d8e3df; border-radius: 22px; background: #e8eeeb; box-shadow: 0 18px 42px #263f3a13; }
@@ -211,10 +180,6 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .detail-title-row { display: block; margin-top: 32px; }
   .detail-title-row h1 { font-size: 36px; }
   .secondary-button { width: 100%; margin-top: 22px; }
-  .calculator-layout { grid-template-columns: 1fr; }
-  .calculator-card, .result-card { padding: 22px 18px; border-radius: 21px; }
-  .field-grid, .field-grid.two-columns { grid-template-columns: 1fr; gap: 14px; margin-top: 22px; }
-  .result-card { min-height: 330px; }
   .document-meta { align-items: flex-start; flex-direction: column; }
   .pdf-toolbar { position: sticky; top: 0; z-index: 2; flex-wrap: wrap; }
   .pdf-controls { flex: 1; justify-content: space-between; }
@@ -237,8 +202,6 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .notice-card > span:not(.notice-topline),
 [data-theme='dark'] .notice-topline time,
 [data-theme='dark'] .detail-title-row p,
-[data-theme='dark'] .card-title p,
-[data-theme='dark'] .number-field small,
 [data-theme='dark'] .document-meta,
 [data-theme='dark'] .pdf-controls > span,
 [data-theme='dark'] .pdf-hint,
@@ -248,7 +211,6 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .tool-card,
 [data-theme='dark'] .notice-card,
 [data-theme='dark'] .secondary-button,
-[data-theme='dark'] .calculator-card,
 [data-theme='dark'] .pdf-toolbar,
 [data-theme='dark'] .markdown-card {
   border-color: #2a3b38;
@@ -282,19 +244,11 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .drawer-layer { background: #020706aa; }
 [data-theme='dark'] .announcement-drawer { background: #101a19; box-shadow: -25px 0 70px #0009; }
 [data-theme='dark'] .drawer-header,
-[data-theme='dark'] .card-title,
 [data-theme='dark'] .markdown-body { border-color: #293b38; }
 [data-theme='dark'] .notice-badge { color: #9ad5cb; background: #1d3a35; }
 [data-theme='dark'] .notice-badge.important { color: #efaa98; background: #45271f; }
 [data-theme='dark'] .back-link { color: #94aaa5; }
 [data-theme='dark'] .secondary-button { color: #83d5c9; }
-[data-theme='dark'] .number-field { color: #aabcb8; }
-[data-theme='dark'] .number-field > div { border-color: #30433f; background: #111c1a; }
-[data-theme='dark'] .number-field input { color: #e2eeeb; }
-[data-theme='dark'] .number-field b { color: #91a29e; }
-[data-theme='dark'] .formula-line { color: #a6b9b5; background: #1a2b28; }
-[data-theme='dark'] .safety-note { color: #c5bb99; border-color: #514830; background: #282419; }
-[data-theme='dark'] .safety-note strong { color: #e1d7b6; }
 [data-theme='dark'] .pdf-viewer { border-color: #2b3d39; background: #111b19; box-shadow: none; }
 [data-theme='dark'] .pdf-canvas-frame { background: #101917; }
 [data-theme='dark'] .pdf-controls button,

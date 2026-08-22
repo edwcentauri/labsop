@@ -8,6 +8,7 @@
 - 公告 Markdown：`src/content/`
 - PDF 原文件：`public/pdfs/`
 - 计算公式：`src/calculations.ts`
+- 工具创建规范：`docs/tool-creation-standard.md`
 
 合并到 `main` 分支后，GitHub Actions 会运行计算测试并发布到 GitHub Pages。
 
@@ -15,8 +16,7 @@
 
 ```bash
 npm install
-npm run generate:pdfs
 npm run dev
 ```
 
-示例 PDF 仅用于验证站内阅读器。正式使用前，请替换为经批准的实验室文件，并同步更新版本号与生效日期。
+新增在线工具前，必须取得经批准的 SOP 来源，并按工具创建规范同步维护内容、计算逻辑、测试、路由、样式和 PDF 元数据。
