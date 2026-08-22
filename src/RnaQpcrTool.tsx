@@ -511,7 +511,10 @@ function ReverseTranscriptionPlan({
             <article className={`loading-plan-card ${result ? `system-${batchPlan.systemVolume}` : 'error'}`} key={`loading-plan-${index}`}>
               <div className="loading-plan-title">
                 <div><span>{entry.sample}</span><small>{entry.rawConcentration} ng/μl</small></div>
-                <b>{batchPlan.systemVolume} μl 体系</b>
+                <div className="system-volume-pills" aria-label={`本批次统一使用 ${batchPlan.systemVolume} μl 体系`}>
+                  <span className={batchPlan.systemVolume === 10 ? 'system-10 active' : 'system-10'}>10 μl</span>
+                  <span className={batchPlan.systemVolume === 16 ? 'system-16 active' : 'system-16'}>16 μl</span>
+                </div>
               </div>
               {result ? (
                 <dl>
