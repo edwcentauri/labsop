@@ -3,7 +3,7 @@ import {
   calculateCellSeeding,
   calculateDilution,
   calculateQpcrMix,
-  calculateRnaLoading,
+  calculateRnaLoadingBatch,
   calculateTubeDistribution,
   createQpcrPlateLayout,
 } from './calculations';
@@ -31,27 +31,38 @@ describe('calculateCellSeeding', () => {
   });
 });
 
-describe('calculateRnaLoading', () => {
-  it('uses the 10 μl system when the RNA volume fits', () => {
-    expect(calculateRnaLoading(200)).toEqual({
-      rnaVolume: 5,
-      gdnaCleanMixVolume: 2,
-      waterVolume: 3,
-      totalVolume: 10,
+describe('calculateRnaLoadingBatch', () => {
+  it('uses the 10 μl system when every sample fits', () => {
+    expect(calculateRnaLoadingBatch([200, 160])).toEqual({
+      systemVolume: 10,
+      samples: [
+        { rnaVolume: 5, gdnaCleanMixVolume: 2, waterVolume: 3, totalVolume: 10 },
+        { rnaVolume: 6.25, gdnaCleanMixVolume: 2, waterVolume: 1.75, totalVolume: 10 },
+      ],
+      hasOverflow: false,
     });
   });
 
-  it('switches to the 16 μl system when the 10 μl system is too small', () => {
-    expect(calculateRnaLoading(100)).toEqual({
-      rnaVolume: 10,
-      gdnaCleanMixVolume: 2,
-      waterVolume: 4,
-      totalVolume: 16,
+  it('switches every sample to 16 μl when any sample needs the larger system', () => {
+    expect(calculateRnaLoadingBatch([200, 100])).toEqual({
+      systemVolume: 16,
+      samples: [
+        { rnaVolume: 5, gdnaCleanMixVolume: 2, waterVolume: 9, totalVolume: 16 },
+        { rnaVolume: 10, gdnaCleanMixVolume: 2, waterVolume: 4, totalVolume: 16 },
+      ],
+      hasOverflow: false,
     });
   });
 
-  it('rejects a sample volume that cannot fit in the 16 μl system', () => {
-    expect(calculateRnaLoading(50)).toBeNull();
+  it('marks overflow only after the unified 16 μl system is insufficient', () => {
+    expect(calculateRnaLoadingBatch([200, 50])).toEqual({
+      systemVolume: 16,
+      samples: [
+        { rnaVolume: 5, gdnaCleanMixVolume: 2, waterVolume: 9, totalVolume: 16 },
+        null,
+      ],
+      hasOverflow: true,
+    });
   });
 });
 

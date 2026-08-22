@@ -1,4 +1,5 @@
 import maintenanceBody from './content/maintenance.md?raw';
+import { RNA_QPCR_PDF_PATH, RNA_QPCR_VERSION } from './rnaQpcrData';
 import sopUpdateBody from './content/sop-update.md?raw';
 
 export type SopEntry = {
@@ -22,8 +23,8 @@ export const sops: SopEntry[] = [
     category: '分子实验',
     kind: 'tool',
     hasPdf: true,
-    version: '20260821（PDF页眉）',
-    pdfPath: 'pdfs/组织提RNA（柱提法）+qPCR ver.20260822.pdf',
+    version: RNA_QPCR_VERSION,
+    pdfPath: RNA_QPCR_PDF_PATH,
     accent: 'teal',
   },
   {
