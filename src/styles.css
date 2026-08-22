@@ -482,8 +482,11 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .plate-grid > b { display: grid; place-items: center; min-height: 22px; color: #7b8c88; font-size: 9px; }
 .plate-well { position: relative; display: flex; align-items: center; justify-content: center; min-height: 42px; padding: 0; overflow: hidden; border: 1px solid #dce6e3; border-radius: 10px; color: #a2afac; background: white; font: inherit; }
 .plate-well.filled { flex-direction: column; border-color: transparent; color: #173a34; }
-.plate-well.filled span { max-width: 42px; overflow: hidden; font-size: 8px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
-.plate-well.filled small { margin-top: 2px; opacity: .65; font-size: 7px; }
+.plate-well.filled span, .plate-well.filled small { display: flex; align-items: center; gap: 2px; width: calc(100% - 6px); min-width: 0; }
+.plate-well.filled span { font-size: 8px; font-weight: 750; }
+.plate-well.filled small { margin-top: 2px; opacity: .72; font-size: 7px; }
+.plate-well.filled i { flex: 0 0 auto; padding: 1px 2px; border-radius: 3px; background: #ffffff70; font-size: 6px; font-style: normal; font-weight: 800; }
+.plate-well.filled b { min-width: 0; font: inherit; line-height: 1; white-space: nowrap; }
 .plate-well.ntc { border: 1.5px dashed #9f5547; }
 .manual-well { cursor: pointer; }
 .manual-well:hover { border-color: #66a99f; box-shadow: inset 0 0 0 1px #66a99f; }
