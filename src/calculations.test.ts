@@ -85,6 +85,10 @@ describe('createQpcrPlateLayout', () => {
         expect(plate.wells.filter((well) => well.primer === primer && well.isNtc)).toHaveLength(3);
       });
     });
+    expect(summarizeQpcrPlateUsage(layout?.flatMap((plate) => plate.wells) ?? [])).toEqual({
+      primerGroupCount: 6,
+      sampleCount: 7,
+    });
   });
 
   it('keeps one primer per row and balances samples across its rows', () => {
@@ -118,19 +122,18 @@ describe('createQpcrPlateLayout', () => {
 });
 
 describe('summarizeQpcrPlateUsage', () => {
-  it('counts unique complete plate assignments and always includes one NTC', () => {
+  it('counts explicit automatic-plate groups without using primer names', () => {
     expect(summarizeQpcrPlateUsage([
-      { primer: 'GAPDH', sample: 'S1' },
-      { primer: 'GAPDH', sample: 'S1' },
-      { primer: 'Gene 1', sample: 'S2' },
-      { primer: 'Gene 1', sample: 'NTC' },
-      { primer: 'Gene 2' },
-    ])).toEqual({ primerCount: 2, sampleCount: 3 });
+      { primerGroupId: 'plate-1-primer-1', primer: '相同名称', sample: 'S1' },
+      { primerGroupId: 'plate-1-primer-1', primer: '相同名称', sample: 'S2' },
+      { primerGroupId: 'plate-1-primer-2', primer: '相同名称', sample: 'S1' },
+      { primerGroupId: 'plate-2-primer-1', primer: '相同名称', sample: 'NTC' },
+    ])).toEqual({ primerGroupCount: 3, sampleCount: 3 });
   });
 
   it('does not add NTC before any complete assignment exists', () => {
     expect(summarizeQpcrPlateUsage([{ primer: 'GAPDH' }])).toEqual({
-      primerCount: 0,
+      primerGroupCount: 0,
       sampleCount: 0,
     });
   });

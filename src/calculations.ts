@@ -111,6 +111,7 @@ export function calculateRnaLoadingBatch(
 
 export type PlateWell = {
   well: string;
+  primerGroupId: string;
   primer: string;
   sample: string;
   replicate: number;
@@ -126,32 +127,34 @@ export type QpcrPlate = {
 };
 
 export type QpcrPlateAssignment = {
+  primerGroupId?: string;
   primer?: string;
   sample?: string;
 };
 
 export type QpcrPlateUsage = {
-  primerCount: number;
+  primerGroupCount: number;
   sampleCount: number;
 };
 
 export function summarizeQpcrPlateUsage(
   assignments: QpcrPlateAssignment[],
 ): QpcrPlateUsage {
-  const primers = new Set<string>();
+  const primerGroups = new Set<string>();
   const samples = new Set<string>();
 
   assignments.forEach((assignment) => {
+    const primerGroupId = assignment.primerGroupId?.trim();
     const primer = assignment.primer?.trim();
     const sample = assignment.sample?.trim();
-    if (!primer || !sample) return;
-    primers.add(primer);
+    if (!primerGroupId || !primer || !sample) return;
+    primerGroups.add(primerGroupId);
     if (sample.toUpperCase() !== 'NTC') samples.add(sample);
   });
 
   return {
-    primerCount: primers.size,
-    sampleCount: primers.size > 0 ? samples.size + 1 : 0,
+    primerGroupCount: primerGroups.size,
+    sampleCount: primerGroups.size > 0 ? samples.size + 1 : 0,
   };
 }
 
@@ -229,6 +232,7 @@ export function createQpcrPlateLayout(
     let nextRow = 0;
 
     primers.forEach((primer, primerIndex) => {
+      const primerGroupId = `plate-${plateIndex + 1}-primer-${primerIndex + 1}`;
       const samplesPerRow = Math.floor(cleanSamples.length / sampleRowsPerPrimer);
       const rowsWithExtraSample = cleanSamples.length % sampleRowsPerPrimer;
       let sampleCursor = 0;
@@ -244,6 +248,7 @@ export function createQpcrPlateLayout(
           for (let replicate = 1; replicate <= replicates; replicate += 1) {
             wells.push({
               well: wellName(nextRow + primerRow, column),
+              primerGroupId,
               primer,
               sample,
               replicate,
@@ -259,6 +264,7 @@ export function createQpcrPlateLayout(
           for (let replicate = 1; replicate <= replicates; replicate += 1) {
             wells.push({
               well: wellName(nextRow, PLATE_COLUMNS - replicates + replicate - 1),
+              primerGroupId,
               primer,
               sample: 'NTC',
               replicate,
@@ -284,6 +290,7 @@ export function createQpcrPlateLayout(
       for (let replicate = 1; replicate <= replicates; replicate += 1) {
         wells.push({
           well: wellName(ntcRow, ntcColumn),
+          primerGroupId: `plate-${plateIndex + 1}-primer-${primerIndex + 1}`,
           primer,
           sample: 'NTC',
           replicate,
@@ -327,25 +334,25 @@ export type TubeDistributionResult = {
 };
 
 export function calculateTubeDistribution(
-  primerCount: number,
+  primerGroupCount: number,
   sampleCount: number,
   replicates: number,
   excessReactionsPerGroup: number,
   roundCommonPool: boolean,
   roundPrimerTube: boolean,
 ): TubeDistributionResult | null {
-  const values = [primerCount, sampleCount, replicates, excessReactionsPerGroup];
-  if (values.some((value) => !Number.isInteger(value) || value < 0) || primerCount === 0 || sampleCount === 0 || replicates === 0) {
+  const values = [primerGroupCount, sampleCount, replicates, excessReactionsPerGroup];
+  if (values.some((value) => !Number.isInteger(value) || value < 0) || primerGroupCount === 0 || sampleCount === 0 || replicates === 0) {
     return null;
   }
 
   const reactionsPerGroup = replicates + excessReactionsPerGroup;
-  const theoreticalCommonReactions = primerCount * sampleCount * reactionsPerGroup;
+  const theoreticalCommonReactions = primerGroupCount * sampleCount * reactionsPerGroup;
   const theoreticalPrimerTubeReactions = sampleCount * reactionsPerGroup;
   const reactionsPerPrimerTube = roundPrimerTube
     ? Math.ceil(theoreticalPrimerTubeReactions / 10) * 10
     : theoreticalPrimerTubeReactions;
-  const requiredCommonReactions = primerCount * reactionsPerPrimerTube;
+  const requiredCommonReactions = primerGroupCount * reactionsPerPrimerTube;
   const commonPoolReactions = roundCommonPool
     ? Math.ceil(requiredCommonReactions / 10) * 10
     : requiredCommonReactions;
@@ -364,7 +371,7 @@ export function calculateTubeDistribution(
       sybr: 5 * commonPoolReactions,
       water: 2.2 * commonPoolReactions,
       total: commonPoolTotal,
-      remainingAfterDistribution: commonPoolTotal - commonAliquot * primerCount,
+      remainingAfterDistribution: commonPoolTotal - commonAliquot * primerGroupCount,
     },
     perPrimerTube: {
       commonAliquot,

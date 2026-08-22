@@ -175,24 +175,23 @@ export default function RnaQpcrTool() {
     ),
     [allSamples, session.referencePrimer, session.replicates, session.targetPrimers],
   );
-  const plateUsage = useMemo(() => summarizeQpcrPlateUsage(
-    session.plateMode === 'auto'
-      ? (plateLayout?.flatMap((plate) => plate.wells) ?? [])
-      : session.manualPlates.flatMap((plate) => Object.values(plate.wells)),
-  ), [plateLayout, session.manualPlates, session.plateMode]);
-  const distributionPrepReactions = plateUsage.primerCount
+  const plateUsage = useMemo(
+    () => summarizeQpcrPlateUsage(plateLayout?.flatMap((plate) => plate.wells) ?? []),
+    [plateLayout],
+  );
+  const distributionPrepReactions = plateUsage.primerGroupCount
     * plateUsage.sampleCount
     * (session.replicates + session.extraReactions);
   const distribution = useMemo(
     () => calculateTubeDistribution(
-      plateUsage.primerCount,
+      plateUsage.primerGroupCount,
       plateUsage.sampleCount,
       session.replicates,
       session.extraReactions,
       roundCommonPool,
       roundPrimerTube,
     ),
-    [plateUsage.primerCount, plateUsage.sampleCount, roundCommonPool, roundPrimerTube, session.extraReactions, session.replicates],
+    [plateUsage.primerGroupCount, plateUsage.sampleCount, roundCommonPool, roundPrimerTube, session.extraReactions, session.replicates],
   );
 
   useEffect(() => {
@@ -506,9 +505,9 @@ export default function RnaQpcrTool() {
 
       {tab === 'distribution' && (
         <section className="qpcr-panel">
-          <div className="panel-heading"><div><span className="section-kicker">MASTER MIX</span><h2>总管分装计算器</h2><p>数据来自当前 96 孔板设计；手动排板时只统计同时设置了引物和样本的孔位。</p></div></div>
+          <div className="panel-heading"><div><span className="section-kicker">MASTER MIX</span><h2>总管分装计算器</h2><p>数据只读取自动生成的 96 孔板，手动设计孔板不参与联动。</p></div></div>
           <div className="distribution-summary">
-            <span>{plateUsage.primerCount} 种实际上板引物</span><b>×</b><span>{plateUsage.sampleCount} 份实际上板样本（含 1 NTC）</span><b>×</b><span>{session.replicates} 复孔 + {session.extraReactions} 冗余</span><b>=</b><strong>{distributionPrepReactions} 份</strong>
+            <span>{plateUsage.primerGroupCount} 组实际上板引物</span><b>×</b><span>{plateUsage.sampleCount} 份实际上板样本（含 1 NTC）</span><b>×</b><span>{session.replicates} 复孔 + {session.extraReactions} 冗余</span><b>=</b><strong>{distributionPrepReactions} 份</strong>
           </div>
           <div className="rounding-controls">
             <label>
@@ -550,7 +549,7 @@ export default function RnaQpcrTool() {
                 ['cDNA / NTC 水', formatUl(distribution.perSamplePrimerTube.cdnaOrNtcWater)],
                 ['合计', formatUl(distribution.perSamplePrimerTube.total)],
                 ['上板后留余', formatUl(distribution.perSamplePrimerTube.remaining)],
-              ]} footer={`共分 ${plateUsage.primerCount * plateUsage.sampleCount} 支`} />
+              ]} footer={`共分 ${plateUsage.primerGroupCount * plateUsage.sampleCount} 支`} />
               <ChevronRight className="flow-arrow" size={26} />
               <article className="distribution-stage plating-stage">
                 <div className="stage-heading"><span>④</span><h3>上板 {session.replicates} × 10 μl</h3></div>
