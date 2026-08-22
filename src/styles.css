@@ -425,7 +425,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .rt-branch-heading { display: flex; align-items: baseline; gap: 9px; padding-bottom: 12px; border-bottom: 1px solid #cfe2de; }
 .rt-branch-heading span { color: #0f766e; font-size: 8px; font-weight: 750; letter-spacing: .12em; }
 .rt-branch-heading h3 { margin: 0; color: #254b44; font-size: 14px; }
-.rt-branch-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 12px; }
+.rt-branch-steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; margin-top: 12px; }
 .rt-branch-steps > div { padding: 12px; border-radius: 11px; background: #ffffffad; }
 .rt-branch-steps strong { color: #2a4c46; font-size: 9px; }
 .rt-branch-steps p { margin: 6px 0 0; color: #627873; font-size: 9px; line-height: 1.7; }
