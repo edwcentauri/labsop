@@ -458,11 +458,15 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .plate-mode-switch button { min-height: 32px; padding: 0 11px; border: 0; border-radius: 9px; color: #6e817d; background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; }
 .plate-mode-switch button.active { color: white; background: #0f766e; box-shadow: 0 4px 10px #0f766e24; }
 .plate-mode-switch button:disabled { opacity: .4; cursor: not-allowed; }
-.manual-plate-toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(260px, 1.35fr); align-items: end; gap: 12px; margin-top: 22px; padding: 16px; border: 1px solid #dbe7e3; border-radius: 16px; background: #f7fbf9; }
+.manual-plate-toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto; align-items: end; gap: 12px; margin-top: 22px; padding: 16px; border: 1px solid #dbe7e3; border-radius: 16px; background: #f7fbf9; }
 .manual-plate-toolbar label { display: flex; flex-direction: column; gap: 7px; color: #526a65; font-size: 10px; font-weight: 750; }
 .manual-plate-toolbar select { width: 100%; min-height: 42px; padding: 0 38px 0 12px; border: 1px solid #d2e1dd; border-radius: 11px; outline: 0; color: #29443f; background: white; font: inherit; font-size: 12px; cursor: pointer; }
 .manual-plate-toolbar select:focus { border-color: #4ca79c; box-shadow: 0 0 0 3px #0f766e13; }
-.manual-plate-toolbar p { margin: 0; color: #748783; font-size: 10px; line-height: 1.65; }
+.manual-plate-toolbar p { grid-column: 1 / -1; margin: 0; color: #748783; font-size: 10px; line-height: 1.65; }
+.manual-toolbar-actions { display: flex; gap: 7px; }
+.manual-toolbar-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 42px; padding: 0 11px; border: 1px solid #d2e1dd; border-radius: 11px; color: #526a65; background: white; font-size: 10px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.manual-toolbar-actions button:first-child { color: #985444; border-color: #e4c7bf; background: #fff9f7; }
+.manual-toolbar-actions button:hover { border-color: #72aa9f; }
 .plate-card { margin-top: 22px; padding: 20px; border: 1px solid #dfe8e5; border-radius: 20px; background: #fafcfb; }
 .plate-card-heading { display: flex; align-items: center; justify-content: space-between; }
 .plate-card-heading span { color: #0f766e; font-size: 9px; font-weight: 750; letter-spacing: .14em; }
@@ -544,7 +548,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .panel-heading .text-button, .plate-count { margin-top: 12px; }
   .plate-heading-actions { align-items: flex-start; flex-direction: column; }
   .manual-plate-toolbar { grid-template-columns: 1fr 1fr; }
-  .manual-plate-toolbar p { grid-column: 1 / -1; }
+  .manual-toolbar-actions { grid-column: 1 / -1; }
   .setup-grid { grid-template-columns: 1fr; }
   .run-options { grid-template-columns: 1fr 1fr; }
   .run-summary { grid-template-columns: repeat(3, 1fr); }
@@ -581,7 +585,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .concentration-field input { font-size: 16px; }
   .mix-input-row, .common-pool-control { align-items: stretch; flex-direction: column; }
   .manual-plate-toolbar { grid-template-columns: 1fr; }
-  .manual-plate-toolbar p { grid-column: auto; }
+  .manual-plate-toolbar p, .manual-toolbar-actions { grid-column: auto; }
+  .manual-toolbar-actions button { flex: 1; }
   .mix-input-row label, .common-pool-control label { width: 100%; }
   .mix-input-row .text-button, .common-pool-control .text-button { min-height: 42px; background: #edf7f4; }
   .recipe-grid { grid-template-columns: 1fr; }
@@ -662,6 +667,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .plate-mode-switch,
 [data-theme='dark'] .manual-plate-toolbar { border-color: #304640; background: #172824; }
 [data-theme='dark'] .manual-plate-toolbar select { color: #d2e1de; border-color: #36504a; background: #12211e; }
+[data-theme='dark'] .manual-toolbar-actions button { color: #b9cbc7; border-color: #36504a; background: #12211e; }
+[data-theme='dark'] .manual-toolbar-actions button:first-child { color: #e2a99c; border-color: #68483f; background: #2c201d; }
 [data-theme='dark'] .manual-well.manual-unprimed.filled { color: #c5d5d1; border-color: #3a514c; background: #21332f; }
 [data-theme='dark'] .add-plate-button { color: #88c7bd; border-color: #416b63; background: #172824; }
 [data-theme='dark'] .recipe-card strong { color: #193a34; }

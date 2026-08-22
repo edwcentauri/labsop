@@ -271,6 +271,19 @@ export default function RnaQpcrTool() {
     }));
   };
 
+  const clearAllManualWells = () => {
+    setSession((current) => ({
+      ...current,
+      manualPlates: current.manualPlates.map((plate) => ({ ...plate, wells: {} })),
+    }));
+  };
+
+  const restoreManualDefaults = () => {
+    setSession((current) => ({ ...current, manualPlates: [{ number: 1, wells: {} }] }));
+    setManualPrimer(NO_MANUAL_ACTION);
+    setManualSample(NO_MANUAL_ACTION);
+  };
+
   const selectTab = (nextTab: ToolTab) => {
     if (tab === 'guide' && nextTab !== 'guide') setCompleted({});
     setTab(nextTab);
@@ -415,6 +428,10 @@ export default function RnaQpcrTool() {
                     {allSamples.map((sample, index) => <option value={sample} key={`${sample}-${index}`}>{sample}</option>)}
                   </select>
                 </label>
+                <div className="manual-toolbar-actions">
+                  <button type="button" onClick={clearAllManualWells} title="清空所有手动孔位，保留现有板数"><Trash2 size={15} />清空全部</button>
+                  <button type="button" onClick={restoreManualDefaults} title="恢复为一块空白手动板"><RotateCcw size={15} />恢复默认</button>
+                </div>
                 <p>点击孔位时，仅修改选择器中不是“无”的属性；保持“清空”可连续移除对应属性。</p>
               </div>
               {session.manualPlates.map((plate) => (
