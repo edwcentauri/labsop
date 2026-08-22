@@ -91,9 +91,6 @@ export const rnaQpcrSections: InteractiveSopSection[] = [
         warning: 'NTC 孔的 cDNA 替换为无酶无菌水。',
       },
       { text: '上机（SZH qPCR 程序，体系容积 10 μl，约 67 分钟）。' },
-      {
-        text: '可选：使用总管分装的方式配制体系。设有 X 种引物、Y 种 cDNA，每组 3 个复孔、每组多配 1 个孔作为冗余，则按照（X × Y × 4）μl 计算总管配比。',
-      },
     ],
   },
 ];

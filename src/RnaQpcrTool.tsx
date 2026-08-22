@@ -335,6 +335,10 @@ export default function RnaQpcrTool() {
     setTab('plate');
   };
 
+  const openDistributionFromGuide = () => {
+    setTab('distribution');
+  };
+
   const returnToQpcrGuide = () => {
     const qpcrPage = rnaQpcrSections.findIndex((section) => section.id === 'qpcr');
     if (qpcrPage >= 0) setGuidePage(qpcrPage);
@@ -436,6 +440,7 @@ export default function RnaQpcrTool() {
             concentrations: current.samples.map((_, itemIndex) => itemIndex === index ? value : (current.concentrations[itemIndex] ?? '')),
           }))}
           onOpenPlateDesigner={openPlateDesignerFromGuide}
+          onOpenDistribution={openDistributionFromGuide}
         />
       )}
 
@@ -505,7 +510,10 @@ export default function RnaQpcrTool() {
 
       {tab === 'distribution' && (
         <section className="qpcr-panel">
-          <div className="panel-heading"><div><span className="section-kicker">MASTER MIX</span><h2>总管分装计算器</h2><p>数据只读取自动生成的 96 孔板，手动设计孔板不参与联动。</p></div></div>
+          <div className="panel-heading">
+            <div><span className="section-kicker">MASTER MIX</span><h2>总管分装计算器</h2><p>数据只读取自动生成的 96 孔板，手动设计孔板不参与联动。</p></div>
+            <button className="return-sop-button" onClick={returnToQpcrGuide}><ArrowLeft size={15} />返回SOP</button>
+          </div>
           <div className="distribution-summary">
             <span>{plateUsage.primerGroupCount} 组实际上板引物</span><b>×</b><span>{plateUsage.sampleCount} 份实际上板样本（含 1 NTC）</span><b>×</b><span>{session.replicates} 复孔 + {session.extraReactions} 冗余</span><b>=</b><strong>{distributionPrepReactions} 份</strong>
           </div>
@@ -575,6 +583,7 @@ function InteractiveGuide({
   onNote,
   onConcentration,
   onOpenPlateDesigner,
+  onOpenDistribution,
 }: {
   page: number;
   setPage: (page: number) => void;
@@ -586,6 +595,7 @@ function InteractiveGuide({
   onNote: (key: string, value: string) => void;
   onConcentration: (index: number, value: string) => void;
   onOpenPlateDesigner: () => void;
+  onOpenDistribution: () => void;
 }) {
   const section = rnaQpcrSections[page];
   const concentrationEntries = samples.map((sample, index) => {
@@ -660,7 +670,10 @@ function InteractiveGuide({
                 {item.details && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}
                 {item.warning && <div className="inline-warning"><CircleAlert size={16} /><span>{item.warning}</span></div>}
                 {section.id === 'qpcr' && index === 0 && (
-                  <button className="sop-plate-jump" onClick={onOpenPlateDesigner}><LayoutGrid size={16} />去设计图纸<ArrowRight size={15} /></button>
+                  <button className="sop-tool-jump" onClick={onOpenPlateDesigner}><LayoutGrid size={16} />去设计图纸<ArrowRight size={15} /></button>
+                )}
+                {section.id === 'qpcr' && index === 1 && (
+                  <button className="sop-tool-jump" onClick={onOpenDistribution}><TestTubes size={16} />可选：使用总管分装的方式配制体系<ArrowRight size={15} /></button>
                 )}
                 {section.id === 'reverse-transcription' && index === 2 && (
                   <ReverseTranscriptionPlan entries={concentrationEntries} batchPlan={batchPlan} />
