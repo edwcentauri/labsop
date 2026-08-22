@@ -398,8 +398,10 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .loading-plan-title > div { display: flex; flex-direction: column; min-width: 0; }
 .loading-plan-title span { overflow: hidden; color: #294a44; font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .loading-plan-title small { margin-top: 3px; color: #60736f; font-size: 9px; }
-.loading-plan-title b { flex: 0 0 auto; padding: 4px 7px; border-radius: 999px; color: #0f766e; background: #e8f5f2; font-size: 8px; }
-.system-16 .loading-plan-title b { color: #185a91; background: #e4f2ff; }
+.loading-plan-title .system-volume-pills { display: flex; flex: 0 0 auto; flex-direction: row; gap: 4px; }
+.system-volume-pills span { padding: 4px 7px; border-radius: 999px; color: #71807d; background: #edf1f0; font-size: 8px; font-weight: 750; user-select: none; }
+.system-volume-pills .system-10.active { color: #0f766e; background: #e8f5f2; }
+.system-volume-pills .system-16.active { color: #185a91; background: #e4f2ff; }
 .loading-plan-card dl { margin: 9px 0 0; }
 .loading-plan-card dl > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
 .loading-plan-card dt { color: #6c7f7b; font-size: 9px; }
@@ -415,7 +417,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .batch-system-banner > div { display: flex; align-items: baseline; gap: 9px; }
 .batch-system-banner span { color: #e2f4f0; font-size: 10px; }
 .batch-system-banner strong { font-size: 23px; }
-.batch-system-banner p { max-width: 500px; margin: 0; color: #e2f4f0; font-size: 10px; line-height: 1.6; text-align: right; }
+.checklist-item .batch-system-banner p { max-width: 500px; margin: 0; color: #e2f4f0; font-size: 10px; line-height: 1.6; text-align: right; }
 .batch-overflow { display: flex; align-items: flex-start; gap: 9px; margin-top: 13px; padding: 13px 14px; border: 1px solid #e0b2a7; border-radius: 12px; color: #9f4b3c; background: #fff7f5; }
 .batch-overflow svg { flex: 0 0 auto; margin-top: 1px; }
 .batch-overflow p { margin: 0; font-size: 10px; line-height: 1.6; }
@@ -536,7 +538,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .embedded-tool-heading p { margin-top: 7px; text-align: left; }
   .concentration-entry-grid { grid-template-columns: repeat(2, 1fr); }
   .batch-system-banner { align-items: flex-start; flex-direction: column; gap: 5px; }
-  .batch-system-banner p { text-align: left; }
+  .checklist-item .batch-system-banner p { text-align: left; }
   .rt-branch-steps { grid-template-columns: 1fr; }
   .checklist-item { grid-template-columns: 34px 1fr; padding: 13px; }
   .guide-pagination { gap: 8px; }
@@ -619,8 +621,9 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .loading-plan-title { border-color: #2b403c; }
 [data-theme='dark'] .loading-plan-title span,
 [data-theme='dark'] .loading-plan-card dd { color: #d9e7e3; }
-[data-theme='dark'] .loading-plan-title b { color: #8cd7cc; background: #1c3934; }
-[data-theme='dark'] .system-16 .loading-plan-title b { color: #9bd0ff; background: #153a57; }
+[data-theme='dark'] .system-volume-pills span { color: #8c9b98; background: #273430; }
+[data-theme='dark'] .system-volume-pills .system-10.active { color: #8cd7cc; background: #1c3934; }
+[data-theme='dark'] .system-volume-pills .system-16.active { color: #9bd0ff; background: #153a57; }
 [data-theme='dark'] .loading-plan-title small,
 [data-theme='dark'] .loading-plan-card dt,
 [data-theme='dark'] .plan-message { color: #91a39f; }
