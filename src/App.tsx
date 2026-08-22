@@ -254,10 +254,11 @@ function ToolHeader({
 
 function PdfPage() {
   const { id } = useParams();
-  const sop = sops.find((item) => item.id === id && item.pdfPath);
-  if (!sop) return <Navigate to="/" replace />;
-  const file = `${import.meta.env.BASE_URL}${sop.pdfPath}`;
-  const fileName = sop.pdfPath.split('/').pop() ?? `${sop.title}-${sop.version || 'current'}.pdf`;
+  const sop = sops.find((item) => item.id === id);
+  if (!sop?.pdfPath) return <Navigate to="/" replace />;
+  const { pdfPath } = sop;
+  const file = `${import.meta.env.BASE_URL}${pdfPath}`;
+  const fileName = pdfPath.split('/').pop() ?? `${sop.title}-${sop.version || 'current'}.pdf`;
 
   return (
     <main className="detail-page pdf-page">
