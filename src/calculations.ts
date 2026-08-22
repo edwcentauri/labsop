@@ -111,6 +111,7 @@ export function calculateRnaLoadingBatch(
 
 export type PlateWell = {
   well: string;
+  primerGroupId: string;
   primer: string;
   sample: string;
   replicate: number;
@@ -126,6 +127,7 @@ export type QpcrPlate = {
 };
 
 export type QpcrPlateAssignment = {
+  primerGroupId?: string;
   primer?: string;
   sample?: string;
 };
@@ -136,26 +138,23 @@ export type QpcrPlateUsage = {
 };
 
 export function summarizeQpcrPlateUsage(
-  plates: QpcrPlateAssignment[][],
+  assignments: QpcrPlateAssignment[],
 ): QpcrPlateUsage {
+  const primerGroups = new Set<string>();
   const samples = new Set<string>();
-  let primerGroupCount = 0;
 
-  plates.forEach((assignments) => {
-    const platePrimers = new Set<string>();
-    assignments.forEach((assignment) => {
-      const primer = assignment.primer?.trim();
-      const sample = assignment.sample?.trim();
-      if (!primer || !sample) return;
-      platePrimers.add(primer);
-      if (sample.toUpperCase() !== 'NTC') samples.add(sample);
-    });
-    primerGroupCount += platePrimers.size;
+  assignments.forEach((assignment) => {
+    const primerGroupId = assignment.primerGroupId?.trim();
+    const primer = assignment.primer?.trim();
+    const sample = assignment.sample?.trim();
+    if (!primerGroupId || !primer || !sample) return;
+    primerGroups.add(primerGroupId);
+    if (sample.toUpperCase() !== 'NTC') samples.add(sample);
   });
 
   return {
-    primerGroupCount,
-    sampleCount: primerGroupCount > 0 ? samples.size + 1 : 0,
+    primerGroupCount: primerGroups.size,
+    sampleCount: primerGroups.size > 0 ? samples.size + 1 : 0,
   };
 }
 
@@ -233,6 +232,7 @@ export function createQpcrPlateLayout(
     let nextRow = 0;
 
     primers.forEach((primer, primerIndex) => {
+      const primerGroupId = `plate-${plateIndex + 1}-primer-${primerIndex + 1}`;
       const samplesPerRow = Math.floor(cleanSamples.length / sampleRowsPerPrimer);
       const rowsWithExtraSample = cleanSamples.length % sampleRowsPerPrimer;
       let sampleCursor = 0;
@@ -248,6 +248,7 @@ export function createQpcrPlateLayout(
           for (let replicate = 1; replicate <= replicates; replicate += 1) {
             wells.push({
               well: wellName(nextRow + primerRow, column),
+              primerGroupId,
               primer,
               sample,
               replicate,
@@ -263,6 +264,7 @@ export function createQpcrPlateLayout(
           for (let replicate = 1; replicate <= replicates; replicate += 1) {
             wells.push({
               well: wellName(nextRow, PLATE_COLUMNS - replicates + replicate - 1),
+              primerGroupId,
               primer,
               sample: 'NTC',
               replicate,
@@ -288,6 +290,7 @@ export function createQpcrPlateLayout(
       for (let replicate = 1; replicate <= replicates; replicate += 1) {
         wells.push({
           well: wellName(ntcRow, ntcColumn),
+          primerGroupId: `plate-${plateIndex + 1}-primer-${primerIndex + 1}`,
           primer,
           sample: 'NTC',
           replicate,
