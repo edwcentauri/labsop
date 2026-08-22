@@ -20,6 +20,7 @@ import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-rou
 import remarkGfm from 'remark-gfm';
 import { calculateCellSeeding, calculateDilution, formatVolume } from './calculations';
 import { announcements, sops, type SopEntry } from './data';
+import RnaQpcrTool from './RnaQpcrTool';
 
 const PdfViewer = lazy(() => import('./PdfViewer'));
 const latestAnnouncementDate = announcements[0].date;
@@ -381,6 +382,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/sop/dilution" element={<DilutionTool />} />
         <Route path="/sop/cell-seeding" element={<CellSeedingTool />} />
+        <Route path="/sop/rna-qpcr" element={<RnaQpcrTool />} />
         <Route path="/sop/:id/pdf" element={<PdfPage />} />
         <Route path="/announcements/:slug" element={<AnnouncementPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

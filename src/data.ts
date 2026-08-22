@@ -16,6 +16,17 @@ export type SopEntry = {
 
 export const sops: SopEntry[] = [
   {
+    id: 'rna-qpcr',
+    title: '组织提 RNA（柱提法）+ qPCR',
+    description: '正式互动 SOP：批次初始化、逐步勾选、上样与体系计算、96 孔板设计及总管分装',
+    category: '分子实验',
+    kind: 'tool',
+    hasPdf: true,
+    version: '20260821（PDF页眉）',
+    pdfPath: 'pdfs/组织提RNA（柱提法）+qPCR ver.20260822.pdf',
+    accent: 'teal',
+  },
+  {
     id: 'dilution',
     title: '溶液稀释计算',
     description: '根据 C₁V₁ = C₂V₂ 快速计算母液与稀释液用量',
