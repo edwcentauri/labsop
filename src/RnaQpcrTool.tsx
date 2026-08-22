@@ -327,6 +327,16 @@ export default function RnaQpcrTool() {
     setTab(nextTab);
   };
 
+  const openPlateDesignerFromGuide = () => {
+    setTab('plate');
+  };
+
+  const returnToQpcrGuide = () => {
+    const qpcrPage = rnaQpcrSections.findIndex((section) => section.id === 'qpcr');
+    if (qpcrPage >= 0) setGuidePage(qpcrPage);
+    setTab('guide');
+  };
+
   const pdfFile = `${import.meta.env.BASE_URL}${RNA_QPCR_PDF_PATH}`;
 
   return (
@@ -421,6 +431,7 @@ export default function RnaQpcrTool() {
             ...current,
             concentrations: current.samples.map((_, itemIndex) => itemIndex === index ? value : (current.concentrations[itemIndex] ?? '')),
           }))}
+          onOpenPlateDesigner={openPlateDesignerFromGuide}
         />
       )}
 
@@ -429,6 +440,7 @@ export default function RnaQpcrTool() {
           <div className="panel-heading">
             <div><span className="section-kicker">PLATE DESIGNER</span><h2>96 孔板设计器</h2><p>{session.plateMode === 'auto' ? '按初始化内容自动排板，并保证每块板都有完整内参和各引物 NTC。' : '选择要应用的引物和样本，再逐个点击孔位完成手动设置。'}</p></div>
             <div className="plate-heading-actions">
+              <button className="return-sop-button" onClick={returnToQpcrGuide}><ArrowLeft size={15} />返回SOP</button>
               <div className="plate-mode-switch" aria-label="排板方式">
                 <button disabled={!hasPlateInitialization} className={session.plateMode === 'auto' ? 'active' : ''} onClick={() => setSession((current) => ({ ...current, plateMode: 'auto' }))}>自动生成</button>
                 <button disabled={!hasPlateInitialization} className={session.plateMode === 'manual' ? 'active' : ''} onClick={() => setSession((current) => ({ ...current, plateMode: 'manual' }))}>手动设置</button>
@@ -559,6 +571,7 @@ function InteractiveGuide({
   onToggle,
   onNote,
   onConcentration,
+  onOpenPlateDesigner,
 }: {
   page: number;
   setPage: (page: number) => void;
@@ -569,6 +582,7 @@ function InteractiveGuide({
   onToggle: (key: string) => void;
   onNote: (key: string, value: string) => void;
   onConcentration: (index: number, value: string) => void;
+  onOpenPlateDesigner: () => void;
 }) {
   const section = rnaQpcrSections[page];
   const concentrationEntries = samples.map((sample, index) => {
@@ -642,6 +656,9 @@ function InteractiveGuide({
                 <p>{item.text}</p>
                 {item.details && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}
                 {item.warning && <div className="inline-warning"><CircleAlert size={16} /><span>{item.warning}</span></div>}
+                {section.id === 'qpcr' && index === 0 && (
+                  <button className="sop-plate-jump" onClick={onOpenPlateDesigner}><LayoutGrid size={16} />去设计图纸<ArrowRight size={15} /></button>
+                )}
                 {section.id === 'reverse-transcription' && index === 2 && (
                   <ReverseTranscriptionPlan entries={concentrationEntries} batchPlan={batchPlan} />
                 )}
