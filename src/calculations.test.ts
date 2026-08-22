@@ -81,7 +81,7 @@ describe('calculateQpcrMix', () => {
 });
 
 describe('createQpcrPlateLayout', () => {
-  it('creates a second plate and repeats the reference primer on every plate', () => {
+  it('balances target primers across plates and repeats the reference primer', () => {
     const layout = createQpcrPlateLayout(
       'GAPDH',
       ['Gene 1', 'Gene 2', 'Gene 3', 'Gene 4'],
@@ -90,11 +90,44 @@ describe('createQpcrPlateLayout', () => {
     );
 
     expect(layout).toHaveLength(2);
-    expect(layout?.[0].primers).toEqual(['GAPDH', 'Gene 1', 'Gene 2', 'Gene 3']);
-    expect(layout?.[0].wells).toHaveLength(84);
-    expect(layout?.[1].primers).toEqual(['GAPDH', 'Gene 4']);
-    expect(layout?.[1].wells).toHaveLength(42);
+    expect(layout?.[0].primers).toEqual(['GAPDH', 'Gene 1', 'Gene 2']);
+    expect(layout?.[1].primers).toEqual(['GAPDH', 'Gene 3', 'Gene 4']);
+    expect(layout?.every((plate) => plate.wells.length === 63)).toBe(true);
     expect(layout?.every((plate) => plate.primers[0] === 'GAPDH')).toBe(true);
+    layout?.forEach((plate) => {
+      plate.primers.forEach((primer) => {
+        expect(plate.wells.filter((well) => well.primer === primer && well.isNtc)).toHaveLength(3);
+      });
+    });
+  });
+
+  it('keeps one primer per row and balances samples across its rows', () => {
+    const layout = createQpcrPlateLayout(
+      'GAPDH',
+      ['Gene 1'],
+      ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'NTC'],
+      3,
+    );
+    const firstPlate = layout?.[0];
+
+    expect(firstPlate?.wells.filter((well) => well.well.startsWith('A')).every((well) => well.primer === 'GAPDH')).toBe(true);
+    expect(firstPlate?.wells.filter((well) => well.well.startsWith('B')).every((well) => well.primer === 'GAPDH')).toBe(true);
+    expect(firstPlate?.wells.filter((well) => well.well.startsWith('A') && !well.isNtc)).toHaveLength(9);
+    expect(firstPlate?.wells.filter((well) => well.well.startsWith('B'))).toHaveLength(9);
+    expect(firstPlate?.wells.filter((well) => well.isNtc && well.primer === 'GAPDH').map((well) => well.well)).toEqual(['A10', 'A11', 'A12']);
+  });
+
+  it('places NTC groups left-to-right in a shared overflow row when sample rows are full', () => {
+    const layout = createQpcrPlateLayout(
+      'GAPDH',
+      ['Gene 1'],
+      ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'NTC'],
+      3,
+    );
+    const ntcWells = layout?.[0].wells.filter((well) => well.isNtc);
+
+    expect(ntcWells?.map((well) => well.well)).toEqual(['E1', 'E2', 'E3', 'E4', 'E5', 'E6']);
+    expect(ntcWells?.map((well) => well.primer)).toEqual(['GAPDH', 'GAPDH', 'GAPDH', 'Gene 1', 'Gene 1', 'Gene 1']);
   });
 });
 

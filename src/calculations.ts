@@ -150,9 +150,20 @@ export type QpcrPlate = {
 };
 
 const PLATE_ROWS = 'ABCDEFGH';
+const PLATE_COLUMNS = 12;
 
-function wellName(index: number): string {
-  return `${PLATE_ROWS[Math.floor(index / 12)]}${(index % 12) + 1}`;
+function wellName(row: number, column: number): string {
+  return `${PLATE_ROWS[row]}${column + 1}`;
+}
+
+function rowsNeededForPrimers(
+  primerCount: number,
+  sampleRowsPerPrimer: number,
+  ntcFitsSampleRow: boolean,
+  ntcGroupsPerRow: number,
+): number {
+  const ntcRows = ntcFitsSampleRow ? 0 : Math.ceil(primerCount / ntcGroupsPerRow);
+  return primerCount * sampleRowsPerPrimer + ntcRows;
 }
 
 export function createQpcrPlateLayout(
@@ -163,41 +174,119 @@ export function createQpcrPlateLayout(
 ): QpcrPlate[] | null {
   const cleanReference = referencePrimer.trim();
   const cleanTargets = targetPrimers.map((primer) => primer.trim()).filter(Boolean);
-  const cleanSamples = samples.map((sample) => sample.trim()).filter(Boolean);
-  if (!cleanReference || cleanSamples.length === 0 || !Number.isInteger(replicates) || replicates <= 0) {
+  const cleanSamples = samples
+    .map((sample) => sample.trim())
+    .filter((sample) => sample && sample.toUpperCase() !== 'NTC');
+  if (
+    !cleanReference
+    || cleanSamples.length === 0
+    || !Number.isInteger(replicates)
+    || replicates <= 0
+    || replicates > PLATE_COLUMNS
+  ) {
     return null;
   }
 
-  const wellsPerPrimer = cleanSamples.length * replicates;
-  if (wellsPerPrimer > 96) return null;
+  const sampleGroupsPerRow = Math.floor(PLATE_COLUMNS / replicates);
+  const sampleRowsPerPrimer = Math.ceil(cleanSamples.length / sampleGroupsPerRow);
+  const ntcFitsSampleRow = sampleRowsPerPrimer * sampleGroupsPerRow > cleanSamples.length;
+  const ntcGroupsPerRow = sampleGroupsPerRow;
 
-  const targetPrimersPerPlate = Math.floor((96 - wellsPerPrimer) / wellsPerPrimer);
-  if (cleanTargets.length > 0 && targetPrimersPerPlate < 1) return null;
+  let primersPerPlate = 0;
+  for (let primerCount = 1; primerCount <= PLATE_ROWS.length; primerCount += 1) {
+    if (rowsNeededForPrimers(primerCount, sampleRowsPerPrimer, ntcFitsSampleRow, ntcGroupsPerRow) > PLATE_ROWS.length) {
+      break;
+    }
+    primersPerPlate = primerCount;
+  }
 
-  const targetGroups = cleanTargets.length === 0
-    ? [[]]
-    : Array.from(
-        { length: Math.ceil(cleanTargets.length / targetPrimersPerPlate) },
-        (_, index) => cleanTargets.slice(index * targetPrimersPerPlate, (index + 1) * targetPrimersPerPlate),
-      );
+  if (primersPerPlate === 0) return null;
+
+  const targetPrimersPerPlate = primersPerPlate - 1;
+  if (cleanTargets.length > 0 && targetPrimersPerPlate === 0) return null;
+
+  const plateCount = cleanTargets.length === 0 ? 1 : Math.ceil(cleanTargets.length / targetPrimersPerPlate);
+  const targetBaseCount = Math.floor(cleanTargets.length / plateCount);
+  const platesWithExtraTarget = cleanTargets.length % plateCount;
+  let targetCursor = 0;
+  const targetGroups = Array.from({ length: plateCount }, (_, plateIndex) => {
+    const targetCount = targetBaseCount + (plateIndex < platesWithExtraTarget ? 1 : 0);
+    const group = cleanTargets.slice(targetCursor, targetCursor + targetCount);
+    targetCursor += targetCount;
+    return group;
+  });
 
   return targetGroups.map((targets, plateIndex) => {
     const primers = [cleanReference, ...targets];
     const wells: PlateWell[] = [];
+    const overflowNtc: Array<{ primer: string; primerIndex: number }> = [];
+    let nextRow = 0;
+
     primers.forEach((primer, primerIndex) => {
-      cleanSamples.forEach((sample) => {
-        for (let replicate = 1; replicate <= replicates; replicate += 1) {
-          wells.push({
-            well: wellName(wells.length),
-            primer,
-            sample,
-            replicate,
-            isReference: primerIndex === 0,
-            isNtc: sample.toUpperCase() === 'NTC',
-            colorIndex: primerIndex,
-          });
+      const samplesPerRow = Math.floor(cleanSamples.length / sampleRowsPerPrimer);
+      const rowsWithExtraSample = cleanSamples.length % sampleRowsPerPrimer;
+      let sampleCursor = 0;
+
+      for (let primerRow = 0; primerRow < sampleRowsPerPrimer; primerRow += 1) {
+        const sampleCount = samplesPerRow
+          + (rowsWithExtraSample > 0 && primerRow >= sampleRowsPerPrimer - rowsWithExtraSample ? 1 : 0);
+        let column = 0;
+
+        for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+          const sample = cleanSamples[sampleCursor];
+          sampleCursor += 1;
+          for (let replicate = 1; replicate <= replicates; replicate += 1) {
+            wells.push({
+              well: wellName(nextRow + primerRow, column),
+              primer,
+              sample,
+              replicate,
+              isReference: primerIndex === 0,
+              isNtc: false,
+              colorIndex: primerIndex,
+            });
+            column += 1;
+          }
         }
-      });
+
+        if (primerRow === 0 && ntcFitsSampleRow) {
+          for (let replicate = 1; replicate <= replicates; replicate += 1) {
+            wells.push({
+              well: wellName(nextRow, PLATE_COLUMNS - replicates + replicate - 1),
+              primer,
+              sample: 'NTC',
+              replicate,
+              isReference: primerIndex === 0,
+              isNtc: true,
+              colorIndex: primerIndex,
+            });
+          }
+        }
+      }
+
+      if (!ntcFitsSampleRow) overflowNtc.push({ primer, primerIndex });
+      nextRow += sampleRowsPerPrimer;
+    });
+
+    let ntcRow = nextRow;
+    let ntcColumn = 0;
+    overflowNtc.forEach(({ primer, primerIndex }) => {
+      if (ntcColumn + replicates > PLATE_COLUMNS) {
+        ntcRow += 1;
+        ntcColumn = 0;
+      }
+      for (let replicate = 1; replicate <= replicates; replicate += 1) {
+        wells.push({
+          well: wellName(ntcRow, ntcColumn),
+          primer,
+          sample: 'NTC',
+          replicate,
+          isReference: primerIndex === 0,
+          isNtc: true,
+          colorIndex: primerIndex,
+        });
+        ntcColumn += 1;
+      }
     });
 
     return { number: plateIndex + 1, primers, wells };
