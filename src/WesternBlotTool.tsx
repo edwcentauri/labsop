@@ -26,6 +26,7 @@ import {
   calculateWesternBlotLysisRecipe,
   calculateWesternBlotUsedWells,
   createWesternBlotLaneLabels,
+  groupWesternBlotPlateRepeats,
   resolveWesternBlotRepeatSourceIndex,
   westernBlotMolecularWeightPosition,
   type WesternBlotGelThickness,
@@ -49,6 +50,8 @@ type ProteinInput = {
   role: ProteinRole;
   name: string;
   molecularWeight: string;
+  primaryDilution: string;
+  secondaryAntibody: SecondaryAntibody;
 };
 
 type PlateDesign = {
@@ -72,19 +75,19 @@ type WesternBlotSession = {
   lastMarkerVolume: string;
   addLysisExcess: boolean;
   lysisExcessVolume: LysisExcessVolume;
-  primaryDilution: string;
-  secondaryAntibody: SecondaryAntibody;
   voltage: string;
   transferCurrent: string;
   proteins: ProteinInput[];
   plates: PlateDesign[];
   notes: Record<string, string>;
+  completed: Record<string, boolean>;
 };
 
-const STORAGE_KEY = 'labsop:western-blot-session:v1';
+const STORAGE_KEY = 'labsop:western-blot-session:v2';
+const LEGACY_STORAGE_KEY = 'labsop:western-blot-session:v1';
 const DEFAULT_PROTEINS: ProteinInput[] = [
-  { id: 'target-1', role: 'target', name: '', molecularWeight: '' },
-  { id: 'reference-1', role: 'reference', name: '', molecularWeight: '' },
+  { id: 'target-1', role: 'target', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' },
+  { id: 'reference-1', role: 'reference', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' },
 ];
 
 function initialLaneLabels(wellCount: WellCount, sampleNames: string[], firstVolume = '5', lastVolume = '3') {
@@ -118,13 +121,12 @@ function createDefaultSession(): WesternBlotSession {
     lastMarkerVolume: '3',
     addLysisExcess: false,
     lysisExcessVolume: '100',
-    primaryDilution: '',
-    secondaryAntibody: '',
     voltage: '250',
     transferCurrent: '400',
     proteins: DEFAULT_PROTEINS.map((protein) => ({ ...protein })),
     plates: [createPlate(1, false), createPlate(2, true), createPlate(3, false), createPlate(4, true)],
     notes: {},
+    completed: {},
   };
 }
 
@@ -144,14 +146,26 @@ function stringRecord(value: unknown): Record<string, string> {
   }, {});
 }
 
+function booleanRecord(value: unknown): Record<string, boolean> {
+  if (!isRecord(value)) return {};
+  return Object.entries(value).reduce<Record<string, boolean>>((result, [key, entry]) => {
+    if (typeof entry === 'boolean') result[key] = entry;
+    return result;
+  }, {});
+}
+
 function loadSession(): WesternBlotSession {
   const fallback = createDefaultSession();
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!saved) return fallback;
     const parsed: unknown = JSON.parse(saved);
     if (!isRecord(parsed)) return fallback;
 
+    const legacyPrimaryDilution = stringValue(parsed.primaryDilution, '');
+    const legacySecondaryAntibody: SecondaryAntibody = parsed.secondaryAntibody === '鼠抗' || parsed.secondaryAntibody === '兔抗'
+      ? parsed.secondaryAntibody
+      : '';
     const proteins = Array.isArray(parsed.proteins)
       ? parsed.proteins.flatMap((value): ProteinInput[] => {
         if (!isRecord(value) || typeof value.id !== 'string') return [];
@@ -160,6 +174,10 @@ function loadSession(): WesternBlotSession {
           role: value.role === 'reference' ? 'reference' : 'target',
           name: stringValue(value.name, ''),
           molecularWeight: stringValue(value.molecularWeight, ''),
+          primaryDilution: stringValue(value.primaryDilution, legacyPrimaryDilution),
+          secondaryAntibody: value.secondaryAntibody === '鼠抗' || value.secondaryAntibody === '兔抗'
+            ? value.secondaryAntibody
+            : legacySecondaryAntibody,
         }];
       })
       : [];
@@ -212,13 +230,12 @@ function loadSession(): WesternBlotSession {
       lastMarkerVolume: stringValue(parsed.lastMarkerVolume, '3'),
       addLysisExcess: parsed.addLysisExcess === true,
       lysisExcessVolume: parsed.lysisExcessVolume === '200' ? '200' : '100',
-      primaryDilution: stringValue(parsed.primaryDilution, ''),
-      secondaryAntibody: parsed.secondaryAntibody === '鼠抗' || parsed.secondaryAntibody === '兔抗' ? parsed.secondaryAntibody : '',
       voltage: stringValue(parsed.voltage, '250'),
       transferCurrent: stringValue(parsed.transferCurrent, '400'),
       proteins: safeProteins,
       plates: normalizedPlates,
       notes: stringRecord(parsed.notes),
+      completed: booleanRecord(parsed.completed),
     };
   } catch {
     return fallback;
@@ -268,6 +285,13 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
   const maximumWeight = Math.max(...marker.bands.map(({ molecularWeight }) => molecularWeight));
   const markerWidth = 100 / plate.wellCount;
   const selectedProteins = proteins.filter(({ id }) => plate.selectedProteinIds.includes(id));
+  const lastEffectiveLaneIndex = plate.laneLabels.reduce(
+    (lastIndex, label, index) => label.trim() ? index : lastIndex,
+    -1,
+  );
+  const rightCutLinePosition = lastEffectiveLaneIndex >= 0
+    ? ((lastEffectiveLaneIndex + 1) / plate.wellCount) * 100
+    : 100;
 
   const updateFromPointer = (index: number, event: ReactPointerEvent<HTMLDivElement>) => {
     const plot = event.currentTarget.parentElement;
@@ -280,7 +304,7 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
   return (
     <div className="wb-design-table">
       <div className="wb-lane-labels" style={{ gridTemplateColumns: `repeat(${plate.wellCount}, minmax(74px, 1fr))` }}>
-        {plate.laneLabels.map((label, index) => <span key={`lane-${index}`} title={label}>{label || `孔 ${index + 1}`}</span>)}
+        {plate.laneLabels.map((label, index) => <span key={`lane-${index}`} title={label}>{label}</span>)}
       </div>
       <div
         className="wb-membrane-plot"
@@ -353,7 +377,7 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
             </div>
           );
         })}
-        {showRightCutLine && <div className="wb-right-cut-line"><span>切膜线</span></div>}
+        {showRightCutLine && <div className="wb-right-cut-line" style={{ left: `${rightCutLinePosition}%` }}><span>切膜线</span></div>}
         <span className="wb-zero-label">0 kDa</span>
       </div>
       {!readOnly && plate.cutLines.length > 0 && (
@@ -463,7 +487,6 @@ export default function WesternBlotTool() {
   const [tab, setTab] = useState<ToolTab>('setup');
   const [guidePage, setGuidePage] = useState(0);
   const [session, setSession] = useState<WesternBlotSession>(loadSession);
-  const [completed, setCompleted] = useState<Record<string, boolean>>({});
 
   const sampleCount = cleanNumber(session.sampleCount);
   const validSampleCount = sampleCount !== null && Number.isInteger(sampleCount) && sampleCount > 0 ? sampleCount : null;
@@ -498,9 +521,8 @@ export default function WesternBlotTool() {
     if (cleanNumber(session.loadingVolume) === null || (cleanNumber(session.loadingVolume) ?? 0) <= 0) errors.push('请填写每孔上样量。');
     if (cleanNumber(session.firstMarkerVolume) === null || (cleanNumber(session.firstMarkerVolume) ?? 0) <= 0 || cleanNumber(session.lastMarkerVolume) === null || (cleanNumber(session.lastMarkerVolume) ?? 0) <= 0) errors.push('首孔和末孔 Marker 上样量须大于 0。');
     if (session.proteins.length < 2 || session.proteins.some((protein) => !protein.name.trim() || (cleanNumber(protein.molecularWeight) ?? 0) <= 0)) errors.push('请填写每个蛋白的名称和大于 0 的分子量。');
-    if (!session.primaryDilution.trim()) errors.push('请填写一抗稀释液浓度或预配信息。');
-    if (!session.secondaryAntibody.trim()) errors.push('请填写一抗所需二抗。');
-    if ((cleanNumber(session.voltage) ?? 0) <= 0 || (cleanNumber(session.transferCurrent) ?? 0) <= 0) errors.push('电泳电压和转膜电流须大于 0。');
+    if (session.proteins.some((protein) => !protein.primaryDilution.trim())) errors.push('请填写每个蛋白的一抗浓度或预配信息。');
+    if (session.proteins.some((protein) => !protein.secondaryAntibody)) errors.push('请为每个蛋白选择二抗。');
     effectivePlates.forEach((plate, index) => {
       if (!plate.wellCount) errors.push(`请选择第 ${index + 1} 板孔数。`);
       if (!plate.markerId) errors.push(`请选择第 ${index + 1} 板 Marker。`);
@@ -520,12 +542,6 @@ export default function WesternBlotTool() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }, [session]);
-
-  const completionResetSignature = JSON.stringify({ ...session, notes: undefined });
-
-  useEffect(() => {
-    setCompleted({});
-  }, [completionResetSignature]);
 
   const updatePlate = (number: number, updater: (plate: PlateDesign) => PlateDesign) => {
     setSession((current) => ({ ...current, plates: current.plates.map((plate) => plate.number === number ? updater(plate) : plate) }));
@@ -569,8 +585,18 @@ export default function WesternBlotTool() {
     });
   };
 
-  const updateProtein = (id: string, field: 'name' | 'molecularWeight', value: string) => {
-    setSession((current) => ({ ...current, proteins: current.proteins.map((protein) => protein.id === id ? { ...protein, [field]: value } : protein) }));
+  const updateProtein = (id: string, field: 'name' | 'molecularWeight' | 'primaryDilution' | 'secondaryAntibody', value: string) => {
+    setSession((current) => ({
+      ...current,
+      proteins: current.proteins.map((protein) => {
+        if (protein.id !== id) return protein;
+        if (field === 'secondaryAntibody') {
+          const secondaryAntibody: SecondaryAntibody = value === '鼠抗' || value === '兔抗' ? value : '';
+          return { ...protein, secondaryAntibody };
+        }
+        return { ...protein, [field]: value };
+      }),
+    }));
   };
 
   const addProtein = () => {
@@ -578,7 +604,7 @@ export default function WesternBlotTool() {
       const id = `target-${Date.now()}`;
       return {
         ...current,
-        proteins: [...current.proteins, { id, role: 'target', name: '', molecularWeight: '' }],
+        proteins: [...current.proteins, { id, role: 'target', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' }],
         plates: current.plates.map((plate) => ({ ...plate, selectedProteinIds: [...plate.selectedProteinIds, id] })),
       };
     });
@@ -594,39 +620,44 @@ export default function WesternBlotTool() {
 
   const resetSession = () => {
     setSession(createDefaultSession());
-    setCompleted({});
     setGuidePage(0);
     setTab('setup');
   };
 
-  const renderPlateDiagrams = (includeCutLines: boolean, showRightCutLine = false) => (
-    <div className="wb-guide-diagrams">
-      {activePlates.map((plate) => {
-        const source = effectivePlate(plate);
-        if (!source.wellCount || !source.markerId) return null;
-        const diagram: ConfiguredPlateDesign = {
-          ...source,
-          number: plate.number,
-          wellCount: source.wellCount,
-          markerId: source.markerId,
-          cutLines: includeCutLines ? source.cutLines : [],
-        };
-        return (
-          <article key={plate.number}>
-            <h4>胶板 {plate.number}</h4>
-            <MarkerPlot
-              plate={diagram}
-              proteins={session.proteins}
-              readOnly
-              showRightCutLine={showRightCutLine}
-              onChangeCutLine={() => undefined}
-              onDeleteCutLine={() => undefined}
-            />
-          </article>
-        );
-      })}
-    </div>
-  );
+  const renderPlateDiagrams = (includeCutLines: boolean, showRightCutLine = false) => {
+    const plateGroups = groupWesternBlotPlateRepeats(activePlates.map(({ repeated }) => repeated));
+    return (
+      <div className="wb-guide-diagrams">
+        {plateGroups.map((group) => {
+          const source = activePlates[group.sourceIndex];
+          if (!source.wellCount || !source.markerId) return null;
+          const plateNumbers = group.plateIndices.map((index) => activePlates[index].number);
+          const diagram: ConfiguredPlateDesign = {
+            ...source,
+            number: plateNumbers[0],
+            wellCount: source.wellCount,
+            markerId: source.markerId,
+            cutLines: includeCutLines ? source.cutLines : [],
+          };
+          return (
+            <article key={group.sourceIndex}>
+              <div className="wb-diagram-plate-pills" aria-label={`适用胶板：${plateNumbers.join('、')}`}>
+                {plateNumbers.map((number) => <span key={number}>胶板 {number}</span>)}
+              </div>
+              <MarkerPlot
+                plate={diagram}
+                proteins={session.proteins}
+                readOnly
+                showRightCutLine={showRightCutLine}
+                onChangeCutLine={() => undefined}
+                onDeleteCutLine={() => undefined}
+              />
+            </article>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderDynamicItem = (item: WesternBlotSopItem) => {
     if (item.kind === 'lysis-recipe') {
@@ -675,21 +706,33 @@ export default function WesternBlotTool() {
         <p>放入电泳槽，两板之间灌满电泳液，然后灌至 <b>{batchPlateCount} 板水位线</b>。每个样本孔上样 <b>{session.loadingVolume || '未填写'} μl</b>，首孔 Marker <b>{session.firstMarkerVolume || '未填写'} μl</b>，末孔 Marker <b>{session.lastMarkerVolume || '未填写'} μl</b>。</p>
       </div>
     );
-    if (item.kind === 'electrophoresis-run') return <p>电压设置为 <b>{session.voltage || '未填写'} V</b>，跑至最大 Marker 离开上层胶且最小 Marker 到底、各小 Marker 充分分散，约 25 min。</p>;
+    if (item.kind === 'electrophoresis-run') return (
+      <div className="wb-recipe-card wb-step-parameter">
+        <NumberField label="电泳电压" value={session.voltage} unit="V" onChange={(value) => setSession((current) => ({ ...current, voltage: value }))} />
+        <p>以当前填写电压运行，跑至最大 Marker 离开上层胶且最小 Marker 到底、各小 Marker 充分分散，约 25 min。</p>
+      </div>
+    );
     if (item.kind === 'electrophoresis-layout') return <div><p>按照下方胶板设计图上样：</p>{renderPlateDiagrams(false)}</div>;
     if (item.kind === 'transfer-setup') return <p>取 <b>{batchPlateCount} 个夹板</b>放在灌转膜液的水槽里浸透水，取 <b>{batchPlateCount} 个 PVDF 膜</b>用无水乙醇激活。</p>;
-    if (item.kind === 'transfer-run') return <p>把夹板放进转膜芯里，注意膜朝向红色面；放入电泳槽，另一空槽放冰盒，灌满转膜液，在盆里冰浴，电流 <b>{session.transferCurrent || '未填写'} mA</b>，约 60 min。</p>;
-    if (item.kind === 'primary-antibody') return (
-      <div className="wb-recipe-card"><strong>按本批次膜图切膜并孵育一抗</strong>{renderPlateDiagrams(true, true)}<p>根据图纸切膜，剪左上角标记，加 3 ml 稀释后的一抗，4℃ 冰箱慢摇过夜。</p><p>一抗稀释液浓度（或预配）：<b>{session.primaryDilution || '未填写'}</b></p></div>
+    if (item.kind === 'transfer-run') return (
+      <div className="wb-recipe-card wb-step-parameter">
+        <NumberField label="转膜电流" value={session.transferCurrent} unit="mA" onChange={(value) => setSession((current) => ({ ...current, transferCurrent: value }))} />
+        <p>把夹板放进转膜芯里，注意膜朝向红色面；放入电泳槽，另一空槽放冰盒，灌满转膜液，在盆里冰浴，以当前填写电流运行约 60 min。</p>
+      </div>
     );
-    if (item.kind === 'secondary-antibody') return <p>加 3 ml 稀释后的 <b>{session.secondaryAntibody || '未选择'}</b>，慢摇 1 h。</p>;
+    if (item.kind === 'primary-antibody') return (
+      <div className="wb-recipe-card"><strong>按本批次膜图切膜并孵育一抗</strong>{renderPlateDiagrams(true, true)}<p>根据图纸切膜，剪左上角标记，加 3 ml 稀释后的一抗，4℃ 冰箱慢摇过夜。</p><dl className="wb-antibody-list">{session.proteins.map((protein) => <div key={protein.id}><dt>{protein.name || '未命名蛋白'}</dt><dd>一抗浓度：{protein.primaryDilution || '未填写'}</dd></div>)}</dl></div>
+    );
+    if (item.kind === 'secondary-antibody') return (
+      <div className="wb-recipe-card"><strong>按蛋白分别选择二抗孵育</strong><dl className="wb-antibody-list">{session.proteins.map((protein) => <div key={protein.id}><dt>{protein.name || '未命名蛋白'}：</dt><dd>{protein.secondaryAntibody || '未选择'}</dd></div>)}</dl><p>各膜加入 3 ml 对应的稀释后二抗，慢摇 1 h。</p></div>
+    );
     return <p>{item.text}</p>;
   };
 
   const currentSection = westernBlotSopSections[guidePage];
-  const completedCount = Object.values(completed).filter(Boolean).length;
+  const completedCount = Object.values(session.completed).filter(Boolean).length;
   const totalSteps = westernBlotSopSections.reduce((total, section) => total + section.items.length, 0);
-  const completedPages = westernBlotSopSections.map((section) => section.items.every((_, index) => completed[`${section.id}-${index}`]));
+  const completedPages = westernBlotSopSections.map((section) => section.items.every((_, index) => session.completed[`${section.id}-${index}`]));
   const renderPageDots = (label: string) => (
     <div className="page-dots" aria-label={label}>
       {westernBlotSopSections.map((section, index) => {
@@ -737,8 +780,6 @@ export default function WesternBlotTool() {
               <NumberField label="每孔上样量" value={session.loadingVolume} unit="μl" onChange={(value) => setSession((current) => ({ ...current, loadingVolume: value }))} />
               <NumberField label="首孔 Marker" value={session.firstMarkerVolume} unit="μl" onChange={(value) => setSession((current) => ({ ...current, firstMarkerVolume: value, plates: rebuildLaneLabels(current, current.sampleNames, value, current.lastMarkerVolume) }))} />
               <NumberField label="末孔 Marker" value={session.lastMarkerVolume} unit="μl" onChange={(value) => setSession((current) => ({ ...current, lastMarkerVolume: value, plates: rebuildLaneLabels(current, current.sampleNames, current.firstMarkerVolume, value) }))} />
-              <NumberField label="电泳电压" value={session.voltage} unit="V" onChange={(value) => setSession((current) => ({ ...current, voltage: value }))} />
-              <NumberField label="转膜电流" value={session.transferCurrent} unit="mA" onChange={(value) => setSession((current) => ({ ...current, transferCurrent: value }))} />
             </div>
             {validSampleCount !== null && <p className="wb-derived-note">本次每板使用 {usedWells} 个孔（{validSampleCount} 个样本孔 + 2 个 Marker 孔）。</p>}
           </div>
@@ -749,14 +790,18 @@ export default function WesternBlotTool() {
           </div>
 
           <div className="wb-setup-section">
-            <div className="setup-card-title"><span>目标蛋白与内参</span><small>用于每板勾选与膜图定位</small></div>
-            <div className="wb-protein-inputs">{session.proteins.map((protein, index) => <div className="wb-protein-input" key={protein.id}><b>{protein.role === 'reference' ? '内参' : `目标 ${session.proteins.slice(0, index + 1).filter((item) => item.role === 'target').length}`}</b><label><span>蛋白名称</span><input value={protein.name} onChange={(event) => updateProtein(protein.id, 'name', event.target.value)} /></label><label><span>分子量</span><span className="wb-inline-number"><input type="number" min={0} step="any" value={protein.molecularWeight} onChange={(event) => updateProtein(protein.id, 'molecularWeight', event.target.value)} /><b>kDa</b></span></label>{session.proteins.length > 2 && protein.role === 'target' && <button type="button" onClick={() => removeProtein(protein.id)} aria-label={`删除${protein.name || '目标蛋白'}`}><Trash2 size={15} /></button>}</div>)}</div>
+            <div className="setup-card-title"><span>目标蛋白、内参与抗体</span><small>每个蛋白分别设置浓度与二抗</small></div>
+            <div className="wb-protein-inputs">{session.proteins.map((protein, index) => (
+              <div className="wb-protein-input" key={protein.id}>
+                <b>{protein.role === 'reference' ? '内参' : `目标 ${session.proteins.slice(0, index + 1).filter((item) => item.role === 'target').length}`}</b>
+                <label><span>蛋白名称</span><input value={protein.name} onChange={(event) => updateProtein(protein.id, 'name', event.target.value)} /></label>
+                <label><span>分子量</span><span className="wb-inline-number"><input type="number" min={0} step="any" value={protein.molecularWeight} onChange={(event) => updateProtein(protein.id, 'molecularWeight', event.target.value)} /><b>kDa</b></span></label>
+                <label><span>一抗浓度（或预配）</span><input value={protein.primaryDilution} onChange={(event) => updateProtein(protein.id, 'primaryDilution', event.target.value)} /></label>
+                <label><span>二抗</span><select value={protein.secondaryAntibody} onChange={(event) => updateProtein(protein.id, 'secondaryAntibody', event.target.value)}><option value="">请选择</option><option value="鼠抗">鼠抗</option><option value="兔抗">兔抗</option></select></label>
+                {session.proteins.length > 2 && protein.role === 'target' && <button type="button" onClick={() => removeProtein(protein.id)} aria-label={`删除${protein.name || '目标蛋白'}`}><Trash2 size={15} /></button>}
+              </div>
+            ))}</div>
             <button type="button" className="add-row-button" onClick={addProtein}><Plus size={16} />添加目标蛋白</button>
-          </div>
-
-          <div className="wb-setup-section">
-            <div className="setup-card-title"><span>抗体</span><small>原文括号字段</small></div>
-            <div className="wb-text-field-grid"><label><span>一抗稀释液浓度（或预配）</span><input value={session.primaryDilution} onChange={(event) => setSession((current) => ({ ...current, primaryDilution: event.target.value }))} /></label><label className="wb-select-field"><span>一抗所需二抗</span><select value={session.secondaryAntibody} onChange={(event) => setSession((current) => ({ ...current, secondaryAntibody: event.target.value as SecondaryAntibody }))}><option value="">请选择</option><option value="鼠抗">鼠抗</option><option value="兔抗">兔抗</option></select></label></div>
           </div>
 
           <div className="wb-setup-section wb-design-section">
@@ -784,12 +829,13 @@ export default function WesternBlotTool() {
 
       {tab === 'guide' && (
         <section className="qpcr-panel wb-guide-panel">
-          <div className="guide-progress"><div><span>完成进度</span><strong>{completedCount} / {totalSteps}</strong><small>修改初始化参数会清空勾选状态</small></div><div className="progress-track"><span style={{ width: `${totalSteps ? completedCount / totalSteps * 100 : 0}%` }} /></div></div>
+          <div className="guide-progress"><div><span>完成进度</span><strong>{completedCount} / {totalSteps}</strong><small>勾选状态自动保存，切换标签页不会清空</small></div><div className="progress-track"><span style={{ width: `${totalSteps ? completedCount / totalSteps * 100 : 0}%` }} /></div></div>
           <div className="guide-heading"><span className="section-kicker">{currentSection.kicker}</span><h2>{currentSection.title}</h2><p>{currentSection.summary}</p></div>
           <div className="wb-guide-items">
             {currentSection.items.map((item, index) => {
               const key = `${currentSection.id}-${index}`;
-              return <article className={`wb-guide-item ${completed[key] ? 'completed' : ''}`} key={key}><button type="button" className="wb-step-check" onClick={() => setCompleted((current) => ({ ...current, [key]: !current[key] }))} aria-label={completed[key] ? '标记为未完成' : '标记为已完成'}>{completed[key] ? <Check size={15} /> : <span>{index + 1}</span>}</button><div>{renderDynamicItem(item)}{item.details && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}{item.warning && <div className="wb-warning"><CircleAlert size={15} />{item.warning}</div>}</div></article>;
+              const isCompleted = session.completed[key] === true;
+              return <article className={`wb-guide-item ${isCompleted ? 'completed' : ''}`} key={key}><button type="button" className="wb-step-check" onClick={() => setSession((current) => ({ ...current, completed: { ...current.completed, [key]: !current.completed[key] } }))} aria-label={isCompleted ? '标记为未完成' : '标记为已完成'}>{isCompleted ? <Check size={15} /> : <span>{index + 1}</span>}</button><div>{renderDynamicItem(item)}{item.details && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}{item.warning && <div className="wb-warning"><CircleAlert size={15} />{item.warning}</div>}</div></article>;
             })}
           </div>
           <label className="notes-field">
