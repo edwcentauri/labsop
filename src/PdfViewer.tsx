@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
@@ -43,6 +44,11 @@ const MAX_SCALE = 3;
 const SCALE_STEP = .15;
 const DOUBLE_CLICK_SCALE = 2;
 const SWIPE_DISTANCE = 64;
+const SCROLL_RENDER_RADIUS = 1;
+const DEFAULT_PAGE_RATIO = Math.SQRT2;
+const RENDER_PIXEL_RATIO = typeof window === 'undefined'
+  ? 1
+  : Math.min(window.devicePixelRatio || 1, 2);
 
 function clampScale(value: number) {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
@@ -55,6 +61,7 @@ function pointDistance([first, second]: Point[]) {
 export default function PdfViewer({ file, fileName }: PdfViewerProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const documentRef = useRef<HTMLDivElement | null>(null);
+  const goToPageRef = useRef<(targetPage: number) => void>(() => undefined);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const activePointers = useRef(new Map<number, Point>());
   const lastTouchTap = useRef<{ time: number; x: number; y: number } | null>(null);
@@ -87,6 +94,7 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
   const [scale, setScale] = useState(1);
   const [frameWidth, setFrameWidth] = useState(720);
   const [frameHeight, setFrameHeight] = useState(720);
+  const [pageRatios, setPageRatios] = useState<Record<number, number>>({});
   const [viewMode, setViewMode] = useState<ViewMode>('paged');
   const [fitMode, setFitMode] = useState<FitMode>('width');
   const [outlineOpen, setOutlineOpen] = useState(false);
@@ -138,6 +146,11 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
       frameRef.current?.scrollTo({ left: 0, top: 0 });
     }
   }, [numPages, scrollToPage, viewMode]);
+
+  goToPageRef.current = goToPage;
+  const handlePdfItemClick = useCallback(({ pageNumber: targetPage }: { pageNumber: number }) => {
+    goToPageRef.current(targetPage);
+  }, []);
 
   const previous = useCallback(() => goToPage(pageNumber - 1), [goToPage, pageNumber]);
   const next = useCallback(() => goToPage(pageNumber + 1), [goToPage, pageNumber]);
@@ -353,27 +366,56 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
     resetPinchPreview();
   };
 
-  const renderPage = (page: number) => (
-    <div
-      className="pdf-page-shell"
-      data-page-number={page}
-      key={`page-${page}`}
-      ref={(element) => {
-        if (element) pageRefs.current.set(page, element);
-        else pageRefs.current.delete(page);
-      }}
-    >
-      <Page
-        pageNumber={page}
-        width={fitMode === 'width' ? frameWidth : undefined}
-        height={fitMode === 'height' ? frameHeight : undefined}
-        scale={scale}
-        renderAnnotationLayer
-        renderTextLayer
-        loading={<div className="pdf-state"><span className="spinner" />正在渲染第 {page} 页…</div>}
-      />
-    </div>
-  );
+  const renderPage = (page: number) => {
+    const pageRatio = pageRatios[page] ?? DEFAULT_PAGE_RATIO;
+    const pageWidth = fitMode === 'width'
+      ? frameWidth * scale
+      : frameHeight * scale / pageRatio;
+    const pageHeight = fitMode === 'height'
+      ? frameHeight * scale
+      : frameWidth * scale * pageRatio;
+    const scrollPageStyle: CSSProperties | undefined = viewMode === 'scroll'
+      ? { height: pageHeight, width: pageWidth }
+      : undefined;
+    const shouldRender = viewMode === 'paged'
+      || Math.abs(page - pageNumber) <= SCROLL_RENDER_RADIUS;
+
+    return (
+      <div
+        className={`pdf-page-shell ${shouldRender ? '' : 'pdf-page-placeholder'}`}
+        data-page-number={page}
+        key={`page-${page}`}
+        ref={(element) => {
+          if (element) pageRefs.current.set(page, element);
+          else pageRefs.current.delete(page);
+        }}
+        style={scrollPageStyle}
+        aria-label={shouldRender ? undefined : `第 ${page} 页占位`}
+      >
+        {shouldRender && (
+          <Page
+            pageNumber={page}
+            width={fitMode === 'width' ? frameWidth : undefined}
+            height={fitMode === 'height' ? frameHeight : undefined}
+            scale={scale}
+            devicePixelRatio={RENDER_PIXEL_RATIO}
+            renderAnnotationLayer
+            renderTextLayer
+            onLoadSuccess={(loadedPage) => {
+              const viewport = loadedPage.getViewport({ scale: 1 });
+              const nextRatio = viewport.height / Math.max(viewport.width, 1);
+              setPageRatios((current) => (
+                Math.abs((current[page] ?? 0) - nextRatio) < .001
+                  ? current
+                  : { ...current, [page]: nextRatio }
+              ));
+            }}
+            loading={<div className="pdf-state"><span className="spinner" />正在渲染第 {page} 页…</div>}
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <section className="pdf-viewer" aria-label="PDF 阅读器">
@@ -438,22 +480,29 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
       </div>
       <div className="pdf-reader-body">
         {outlineOpen && (
-          <aside className="pdf-outline-panel" id="pdf-outline-panel" aria-label="PDF 书签">
-            <div className="pdf-outline-header">
-              <div><span>文档导航</span><strong>书签</strong></div>
-              <button onClick={() => setOutlineOpen(false)} aria-label="关闭书签">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="pdf-outline-content">
-              {outlineStatus === 'loading' && <div className="pdf-outline-state">正在读取书签…</div>}
-              {outlineStatus === 'empty' && <div className="pdf-outline-state">此 PDF 未包含书签。</div>}
-              {outlineStatus === 'error' && <div className="pdf-outline-state error">书签读取失败。</div>}
-              {outlineStatus === 'ready' && pdf && (
-                <Outline pdf={pdf} onItemClick={({ pageNumber: targetPage }) => goToPage(targetPage)} />
-              )}
-            </div>
-          </aside>
+          <>
+            <button
+              className="pdf-outline-backdrop"
+              onClick={() => setOutlineOpen(false)}
+              aria-label="关闭书签"
+            />
+            <aside className="pdf-outline-panel" id="pdf-outline-panel" aria-label="PDF 书签">
+              <div className="pdf-outline-header">
+                <div><span>文档导航</span><strong>书签</strong></div>
+                <button onClick={() => setOutlineOpen(false)} aria-label="关闭书签">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="pdf-outline-content">
+                {outlineStatus === 'loading' && <div className="pdf-outline-state">正在读取书签…</div>}
+                {outlineStatus === 'empty' && <div className="pdf-outline-state">此 PDF 未包含书签。</div>}
+                {outlineStatus === 'error' && <div className="pdf-outline-state error">书签读取失败。</div>}
+                {outlineStatus === 'ready' && pdf && (
+                  <Outline pdf={pdf} onItemClick={handlePdfItemClick} />
+                )}
+              </div>
+            </aside>
+          </>
         )}
         <div
           className={`pdf-canvas-frame ${viewMode === 'scroll' ? 'scroll-mode' : 'paged-mode'}`}
@@ -470,11 +519,12 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
             file={file}
             inputRef={documentRef}
             externalLinkTarget="_blank"
-            onItemClick={({ pageNumber: targetPage }) => goToPage(targetPage)}
+            onItemClick={handlePdfItemClick}
             onLoadSuccess={(loadedPdf) => {
               setPdf(loadedPdf);
               setNumPages(loadedPdf.numPages);
               setPageNumber(1);
+              setPageRatios({});
               setOutlineStatus('loading');
               loadedPdf.getOutline()
                 .then((outline) => setOutlineStatus(outline?.length ? 'ready' : 'empty'))
