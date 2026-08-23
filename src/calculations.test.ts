@@ -2,8 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateRnaLoadingBatch,
   calculateTubeDistribution,
+  calculateWesternBlotBufferRecipe,
+  calculateWesternBlotDenaturationRecipe,
+  calculateWesternBlotGelRecipe,
+  calculateWesternBlotLysisRecipe,
+  calculateWesternBlotUsedWells,
   createQpcrPlateLayout,
+  createWesternBlotLaneLabels,
   summarizeQpcrPlateUsage,
+  westernBlotMolecularWeightPosition,
 } from './calculations';
 
 describe('calculateRnaLoadingBatch', () => {
@@ -139,5 +146,62 @@ describe('calculateTubeDistribution', () => {
     expect(result?.perPrimerTube.reversePrimer).toBe(12);
     expect(result?.perPrimerTube.total).toBe(240);
     expect(result?.perPrimerTube.remainingAfterDistribution).toBe(16);
+  });
+});
+
+describe('Western blot calculations', () => {
+  it('calculates the lysis recipe from sample count and explicit excess volume', () => {
+    expect(calculateWesternBlotLysisRecipe(6, 200)).toEqual({
+      tissueVolume: 2400,
+      excessVolume: 200,
+      totalVolume: 2600,
+      proteaseInhibitor: 52,
+      phosphataseInhibitor: 52,
+      ripa: 2496,
+    });
+    expect(calculateWesternBlotLysisRecipe(0, 200)).toBeNull();
+    expect(calculateWesternBlotLysisRecipe(2, -1)).toBeNull();
+  });
+
+  it('scales the fixed denaturation recipe across the batch', () => {
+    expect(calculateWesternBlotDenaturationRecipe(4)?.batch).toEqual({
+      protein: 960,
+      loadingBuffer: 240,
+      total: 1200,
+    });
+    expect(calculateWesternBlotDenaturationRecipe(1.5)).toBeNull();
+  });
+
+  it('uses the approved recipe for the selected thickness and plate count', () => {
+    expect(calculateWesternBlotGelRecipe(4, 0.75)?.batch).toEqual({
+      resolving: { solution: 8, buffer: 8, accelerator: 160 },
+      stacking: { solution: 2, buffer: 2, accelerator: 40 },
+    });
+    expect(calculateWesternBlotGelRecipe(2, 1.5)?.perPlate).toEqual({
+      resolving: { solution: 4, buffer: 4, accelerator: 80 },
+      stacking: { solution: 1, buffer: 1, accelerator: 20 },
+    });
+  });
+
+  it('scales buffer powders and liquids for two or four plates', () => {
+    expect(calculateWesternBlotBufferRecipe(4)).toEqual({
+      powderPacks: 2,
+      running: { waterBeforeCalibration: 1600, finalVolume: 2000 },
+      transfer: { ethanol: 400, waterBeforeCalibration: 1200, finalVolume: 2000 },
+    });
+    expect(calculateWesternBlotBufferRecipe(3)).toBeNull();
+  });
+
+  it('reserves two marker wells and creates the default M5/sample/M3 order', () => {
+    expect(calculateWesternBlotUsedWells(6)).toBe(8);
+    expect(createWesternBlotLaneLabels(['S1', 'S2'], 10)).toEqual([
+      'Marker 5 μl', 'S1', 'S2', 'Marker 3 μl', '', '', '', '', '', '',
+    ]);
+  });
+
+  it('maps molecular weight linearly within the selected marker range', () => {
+    expect(westernBlotMolecularWeightPosition(150, 300)).toBe(50);
+    expect(westernBlotMolecularWeightPosition(0, 300)).toBe(100);
+    expect(westernBlotMolecularWeightPosition(301, 300)).toBeNull();
   });
 });

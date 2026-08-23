@@ -19,6 +19,7 @@ import { announcements, sops, type SopEntry } from './data';
 import ManualCard from './ManualCard';
 import { manuals, manualTags } from './manuals';
 import RnaQpcrTool from './RnaQpcrTool';
+import WesternBlotTool from './WesternBlotTool';
 import type { VersionHistoryEntry } from './versionHistory';
 import VersionHistoryDialog from './VersionHistoryDialog';
 
@@ -428,6 +429,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/sop/rna-qpcr" element={<RnaQpcrTool />} />
+        <Route path="/sop/western-blot" element={<WesternBlotTool />} />
         <Route path="/sop/:id/pdf" element={<PdfPage />} />
         <Route path="/manuals/:id" element={<ManualPage />} />
         <Route path="/announcements/:slug" element={<AnnouncementPage />} />

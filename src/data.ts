@@ -24,6 +24,15 @@ export type SopEntry = {
 
 export const sops: SopEntry[] = [
   {
+    id: 'western-blot',
+    title: '组织提蛋白 + Western blotting',
+    description: '批次初始化、胶板与切膜设计、配方联动计算及针对性互动实验步骤',
+    category: '分子实验',
+    kind: 'tool',
+    hasPdf: false,
+    accent: 'violet',
+  },
+  {
     id: 'rna-qpcr',
     title: '组织提 RNA（柱提法）+ qPCR',
     description: '正式互动 SOP：批次初始化、逐步勾选、上样、96 孔板设计及联动总管分装',
