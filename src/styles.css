@@ -252,12 +252,12 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .search-box kbd { display: none; }
   .content-section { margin-top: 18px; padding: 0 16px 60px; }
   .section-heading h2 { font-size: 27px; }
-  .home-tabs { gap: 4px; padding: 4px; border-radius: 17px; }
-  .home-tab { gap: 8px; min-height: 54px; padding: 8px 10px; border-radius: 13px; }
+  .home-tabs { gap: 3px; padding: 3px; border-radius: 15px; }
+  .home-tab { gap: 6px; min-height: 44px; padding: 5px 8px; border-radius: 11px; }
   .home-tab > svg { display: none; }
   .home-tab small { display: none; }
-  .home-tab strong { font-size: 15px; }
-  .home-tab-count { min-width: 25px; height: 25px; padding: 0 6px; }
+  .home-tab strong { font-size: 13px; }
+  .home-tab-count { min-width: 22px; height: 22px; padding: 0 5px; font-size: 10px; }
   .home-tab-panel { padding-top: 0; }
   .panel-summary { margin-top: 13px; padding: 0 2px; font-size: 12px; }
   .filter-row { gap: 7px; margin: 11px -16px 14px 0; padding-right: 16px; }
