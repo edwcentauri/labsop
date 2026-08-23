@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import {
@@ -42,7 +41,6 @@ type Point = { x: number; y: number };
 const MIN_SCALE = .6;
 const MAX_SCALE = 3;
 const SCALE_STEP = .15;
-const DOUBLE_CLICK_SCALE = 2;
 const SWIPE_DISTANCE = 64;
 const SCROLL_RENDER_RADIUS = 1;
 const DEFAULT_PAGE_RATIO = Math.SQRT2;
@@ -64,8 +62,6 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
   const goToPageRef = useRef<(targetPage: number) => void>(() => undefined);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const activePointers = useRef(new Map<number, Point>());
-  const lastTouchTap = useRef<{ time: number; x: number; y: number } | null>(null);
-  const suppressSyntheticDoubleClickUntil = useRef(0);
   const scrollFrameRequest = useRef<number | null>(null);
   const panGesture = useRef<{
     pointerId: number;
@@ -230,8 +226,6 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
     activePointers.current.clear();
     panGesture.current = null;
     pinchGesture.current = null;
-    lastTouchTap.current = null;
-    suppressSyntheticDoubleClickUntil.current = 0;
     const documentElement = documentRef.current;
     documentElement?.style.removeProperty('transform');
     documentElement?.style.removeProperty('transform-origin');
@@ -245,36 +239,6 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
       }
     });
   }, []);
-
-  const zoomAtPoint = (nextScale: number, midpointX: number, midpointY: number) => {
-    const frame = frameRef.current;
-    if (!frame || nextScale === scale) return;
-    pendingZoomScroll.current = {
-      contentX: (frame.scrollLeft + midpointX) / scale,
-      contentY: (frame.scrollTop + midpointY) / scale,
-      midpointX,
-      midpointY,
-    };
-    setScale(clampScale(nextScale));
-  };
-
-  const toggleDoubleClickZoom = (clientX: number, clientY: number) => {
-    if (scale > 1.05) {
-      applyFitMode('width');
-      return;
-    }
-    const frame = frameRef.current;
-    if (!frame) return;
-    const frameRect = frame.getBoundingClientRect();
-    zoomAtPoint(DOUBLE_CLICK_SCALE, clientX - frameRect.left, clientY - frameRect.top);
-  };
-
-  const handleDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (Date.now() < suppressSyntheticDoubleClickUntil.current) return;
-    if (event.target instanceof Element && event.target.closest('a, button')) return;
-    toggleDoubleClickZoom(event.clientX, event.clientY);
-  };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'touch') return;
@@ -357,7 +321,6 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
     if (pinch) {
       resetPinchPreview();
       pinchGesture.current = null;
-      lastTouchTap.current = null;
       if (frame && pinch.nextScale !== scale) {
         pendingZoomScroll.current = {
           contentX: (frame.scrollLeft + pinch.midpointX) / pinch.startScale,
@@ -383,25 +346,6 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
       }
     }
 
-    if (pan && releasedPoint && pan.pointerId === event.pointerId) {
-      const moved = Math.hypot(releasedPoint.x - pan.startX, releasedPoint.y - pan.startY);
-      const isInteractiveTarget = event.target instanceof Element && Boolean(event.target.closest('a, button'));
-      if (moved < 12 && !isInteractiveTarget) {
-        const now = Date.now();
-        const lastTap = lastTouchTap.current;
-        if (
-          lastTap
-          && now - lastTap.time < 320
-          && Math.hypot(releasedPoint.x - lastTap.x, releasedPoint.y - lastTap.y) < 24
-        ) {
-          suppressSyntheticDoubleClickUntil.current = now + 500;
-          lastTouchTap.current = null;
-          toggleDoubleClickZoom(releasedPoint.x, releasedPoint.y);
-        } else {
-          lastTouchTap.current = { time: now, x: releasedPoint.x, y: releasedPoint.y };
-        }
-      }
-    }
     panGesture.current = null;
   };
 
@@ -575,7 +519,6 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
           className={`pdf-canvas-frame ${viewMode === 'scroll' ? 'scroll-mode' : 'paged-mode'}`}
           ref={frameRef}
           onScroll={updateCurrentScrollPage}
-          onDoubleClick={handleDoubleClick}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={finishPointer}
@@ -610,8 +553,8 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
       </div>
       <p className="pdf-hint">
         {viewMode === 'paged'
-          ? '按钮或左右滑动翻页；双指缩放，双击放大或恢复适应宽度。'
-          : '上下滑动连续阅读；双指缩放，书签和 PDF 内链接可直接跳转。'}
+          ? '按钮或左右滑动翻页；双指缩放，可用适应按钮恢复页面大小。'
+          : '上下滑动连续阅读；双指缩放，可通过书签和 PDF 内链接跳转。'}
       </p>
     </section>
   );
