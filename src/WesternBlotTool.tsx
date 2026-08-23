@@ -277,7 +277,8 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine }: {
         <div className="wb-protein-zone" style={{ left: `${markerWidth}%` }}>
           {selectedProteins.map((protein) => {
             const molecularWeight = cleanNumber(protein.molecularWeight);
-            const top = molecularWeight === null ? null : westernBlotMolecularWeightPosition(molecularWeight, maximumWeight);
+            if (molecularWeight === null) return null;
+            const top = westernBlotMolecularWeightPosition(molecularWeight, maximumWeight);
             if (top === null) return null;
             return (
               <span className="wb-protein-band" style={{ top: `${top}%` }} key={protein.id}>
