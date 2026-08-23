@@ -250,16 +250,18 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .hero p { font-size: 13px; line-height: 1.55; }
   .search-box { margin-top: 20px; height: 52px; }
   .search-box kbd { display: none; }
-  .content-section { margin-top: 28px; padding: 0 16px 60px; }
+  .content-section { margin-top: 18px; padding: 0 16px 60px; }
   .section-heading h2 { font-size: 27px; }
-  .home-tabs { gap: 6px; padding: 5px; border-radius: 19px; }
-  .home-tab { gap: 9px; min-height: 66px; padding: 10px 12px; border-radius: 14px; }
+  .home-tabs { gap: 4px; padding: 4px; border-radius: 17px; }
+  .home-tab { gap: 8px; min-height: 54px; padding: 8px 10px; border-radius: 13px; }
   .home-tab > svg { display: none; }
   .home-tab small { display: none; }
-  .home-tab strong { font-size: 16px; }
-  .home-tab-count { min-width: 27px; height: 27px; padding: 0 7px; }
-  .panel-summary { margin-top: 18px; }
-  .filter-row { margin-right: -16px; padding-right: 16px; }
+  .home-tab strong { font-size: 15px; }
+  .home-tab-count { min-width: 25px; height: 25px; padding: 0 6px; }
+  .home-tab-panel { padding-top: 0; }
+  .panel-summary { margin-top: 13px; padding: 0 2px; font-size: 12px; }
+  .filter-row { gap: 7px; margin: 11px -16px 14px 0; padding-right: 16px; }
+  .filter { min-height: 36px; padding: 0 15px; font-size: 12px; }
   .tool-grid { grid-template-columns: 1fr; gap: 12px; }
   .tool-card { min-height: 0; padding: 19px 18px; border-radius: 20px; }
   .tool-copy { padding-right: 16px; }
