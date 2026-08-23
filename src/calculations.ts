@@ -323,3 +323,194 @@ export function calculateTubeDistribution(
     },
   };
 }
+
+export type WesternBlotGelThickness = 0.75 | 1 | 1.5;
+
+export type WesternBlotLysisRecipe = {
+  tissueVolume: number;
+  excessVolume: number;
+  totalVolume: number;
+  proteaseInhibitor: number;
+  phosphataseInhibitor: number;
+  ripa: number;
+};
+
+export function calculateWesternBlotLysisRecipe(
+  sampleCount: number,
+  excessVolume: number,
+): WesternBlotLysisRecipe | null {
+  if (
+    !Number.isInteger(sampleCount)
+    || sampleCount <= 0
+    || !Number.isFinite(excessVolume)
+    || excessVolume < 0
+  ) {
+    return null;
+  }
+
+  const tissueVolume = sampleCount * 400;
+  const totalVolume = tissueVolume + excessVolume;
+  const proteaseInhibitor = totalVolume / 50;
+  const phosphataseInhibitor = totalVolume / 50;
+
+  return {
+    tissueVolume,
+    excessVolume,
+    totalVolume,
+    proteaseInhibitor,
+    phosphataseInhibitor,
+    ripa: totalVolume - proteaseInhibitor - phosphataseInhibitor,
+  };
+}
+
+export type WesternBlotDenaturationRecipe = {
+  perTube: {
+    protein: 240;
+    loadingBuffer: 60;
+    total: 300;
+  };
+  batch: {
+    protein: number;
+    loadingBuffer: number;
+    total: number;
+  };
+};
+
+export function calculateWesternBlotDenaturationRecipe(
+  sampleCount: number,
+): WesternBlotDenaturationRecipe | null {
+  if (!Number.isInteger(sampleCount) || sampleCount <= 0) return null;
+
+  return {
+    perTube: { protein: 240, loadingBuffer: 60, total: 300 },
+    batch: {
+      protein: sampleCount * 240,
+      loadingBuffer: sampleCount * 60,
+      total: sampleCount * 300,
+    },
+  };
+}
+
+type WesternBlotGelMixture = {
+  solution: number;
+  buffer: number;
+  accelerator: number;
+};
+
+export type WesternBlotGelRecipe = {
+  plateCount: number;
+  thickness: WesternBlotGelThickness;
+  perPlate: {
+    resolving: WesternBlotGelMixture;
+    stacking: WesternBlotGelMixture;
+  };
+  batch: {
+    resolving: WesternBlotGelMixture;
+    stacking: WesternBlotGelMixture;
+  };
+};
+
+const WESTERN_BLOT_GEL_RECIPES: Record<WesternBlotGelThickness, WesternBlotGelRecipe['perPlate']> = {
+  0.75: {
+    resolving: { solution: 2, buffer: 2, accelerator: 40 },
+    stacking: { solution: 0.5, buffer: 0.5, accelerator: 10 },
+  },
+  1: {
+    resolving: { solution: 2.7, buffer: 2.7, accelerator: 60 },
+    stacking: { solution: 0.75, buffer: 0.75, accelerator: 15 },
+  },
+  1.5: {
+    resolving: { solution: 4, buffer: 4, accelerator: 80 },
+    stacking: { solution: 1, buffer: 1, accelerator: 20 },
+  },
+};
+
+export function calculateWesternBlotGelRecipe(
+  plateCount: number,
+  thickness: WesternBlotGelThickness,
+): WesternBlotGelRecipe | null {
+  if (!Number.isInteger(plateCount) || plateCount <= 0 || !WESTERN_BLOT_GEL_RECIPES[thickness]) return null;
+  const perPlate = WESTERN_BLOT_GEL_RECIPES[thickness];
+  const multiplyMixture = (mixture: WesternBlotGelMixture): WesternBlotGelMixture => ({
+    solution: mixture.solution * plateCount,
+    buffer: mixture.buffer * plateCount,
+    accelerator: mixture.accelerator * plateCount,
+  });
+
+  return {
+    plateCount,
+    thickness,
+    perPlate,
+    batch: {
+      resolving: multiplyMixture(perPlate.resolving),
+      stacking: multiplyMixture(perPlate.stacking),
+    },
+  };
+}
+
+export type WesternBlotBufferRecipe = {
+  powderPacks: number;
+  running: {
+    waterBeforeCalibration: number;
+    finalVolume: number;
+  };
+  transfer: {
+    ethanol: number;
+    waterBeforeCalibration: number;
+    finalVolume: number;
+  };
+};
+
+export function calculateWesternBlotBufferRecipe(
+  plateCount: number,
+): WesternBlotBufferRecipe | null {
+  if (plateCount !== 2 && plateCount !== 4) return null;
+  const powderPacks = plateCount / 2;
+  return {
+    powderPacks,
+    running: {
+      waterBeforeCalibration: powderPacks * 800,
+      finalVolume: powderPacks * 1000,
+    },
+    transfer: {
+      ethanol: powderPacks * 200,
+      waterBeforeCalibration: powderPacks * 600,
+      finalVolume: powderPacks * 1000,
+    },
+  };
+}
+
+export function calculateWesternBlotUsedWells(sampleCount: number): number | null {
+  if (!Number.isInteger(sampleCount) || sampleCount <= 0) return null;
+  return sampleCount + 2;
+}
+
+export function createWesternBlotLaneLabels(
+  sampleNames: string[],
+  wellCount: 10 | 15 | 30,
+): string[] {
+  const labels = Array.from({ length: wellCount }, () => '');
+  labels[0] = 'Marker 5 μl';
+  sampleNames.slice(0, Math.max(0, wellCount - 2)).forEach((sample, index) => {
+    labels[index + 1] = sample.trim();
+  });
+  const lastUsedLane = Math.min(sampleNames.length + 1, wellCount - 1);
+  labels[lastUsedLane] = 'Marker 3 μl';
+  return labels;
+}
+
+export function westernBlotMolecularWeightPosition(
+  molecularWeight: number,
+  maximumMarkerWeight: number,
+): number | null {
+  if (
+    !Number.isFinite(molecularWeight)
+    || !Number.isFinite(maximumMarkerWeight)
+    || molecularWeight < 0
+    || maximumMarkerWeight <= 0
+    || molecularWeight > maximumMarkerWeight
+  ) {
+    return null;
+  }
+  return 100 - (molecularWeight / maximumMarkerWeight) * 100;
+}
