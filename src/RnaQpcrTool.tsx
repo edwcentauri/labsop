@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CircleAlert,
   ClipboardCheck,
-  Download,
   FileText,
   LayoutGrid,
   LockKeyhole,
@@ -34,8 +33,6 @@ import {
 import {
   reverseTranscriptionBranches,
   RNA_QPCR_EFFECTIVE_DATE,
-  RNA_QPCR_PDF_FILE_NAME,
-  RNA_QPCR_PDF_PATH,
   RNA_QPCR_VERSION,
   RNA_QPCR_VERSION_HISTORY,
   rnaQpcrSections,
@@ -483,8 +480,6 @@ export default function RnaQpcrTool() {
     setTab('guide');
   };
 
-  const pdfFile = `${import.meta.env.BASE_URL}${RNA_QPCR_PDF_PATH}`;
-
   return (
     <main className="detail-page qpcr-workspace">
       <div className="qpcr-hero">
@@ -504,8 +499,7 @@ export default function RnaQpcrTool() {
             </div>
           </div>
           <div className="qpcr-hero-actions">
-            <Link className="secondary-button" to="/sop/rna-qpcr/pdf"><FileText size={18} />在线查看 PDF</Link>
-            <a className="secondary-button" href={pdfFile} download={RNA_QPCR_PDF_FILE_NAME}><Download size={18} />下载原文件</a>
+            <Link className="secondary-button" to="/sop/rna-qpcr/pdf"><FileText size={16} />查看 PDF</Link>
           </div>
         </div>
         <div className="source-alert"><FileText size={18} /><span>当前正确操作以网页内容为准；PDF 仅用于查看与下载，网页与下载文件名当前均标记为 {RNA_QPCR_VERSION}，未校验 PDF 页面内容。</span></div>
