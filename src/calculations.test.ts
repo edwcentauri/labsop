@@ -9,6 +9,7 @@ import {
   calculateWesternBlotUsedWells,
   createQpcrPlateLayout,
   createWesternBlotLaneLabels,
+  resolveWesternBlotRepeatSourceIndex,
   summarizeQpcrPlateUsage,
   westernBlotMolecularWeightPosition,
 } from './calculations';
@@ -181,6 +182,10 @@ describe('Western blot calculations', () => {
       resolving: { solution: 4, buffer: 4, accelerator: 80 },
       stacking: { solution: 1, buffer: 1, accelerator: 20 },
     });
+    expect(calculateWesternBlotGelRecipe(4, 1)?.pourPerPlate).toEqual({
+      resolving: 5.4,
+      stacking: 1.5,
+    });
   });
 
   it('scales buffer powders and liquids for two or four plates', () => {
@@ -203,5 +208,11 @@ describe('Western blot calculations', () => {
     expect(westernBlotMolecularWeightPosition(150, 300)).toBe(50);
     expect(westernBlotMolecularWeightPosition(0, 300)).toBe(100);
     expect(westernBlotMolecularWeightPosition(301, 300)).toBeNull();
+  });
+
+  it('resolves chained repeat plates to their nearest independent source', () => {
+    expect(resolveWesternBlotRepeatSourceIndex(3, [false, true, true, true])).toBe(0);
+    expect(resolveWesternBlotRepeatSourceIndex(3, [false, true, false, true])).toBe(2);
+    expect(resolveWesternBlotRepeatSourceIndex(4, [false, true, false, true])).toBeNull();
   });
 });

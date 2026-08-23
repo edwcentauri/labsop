@@ -11,8 +11,10 @@ import {
   FlaskConical,
   GripHorizontal,
   LayoutGrid,
+  NotebookPen,
   Plus,
   RotateCcw,
+  Save,
   Settings2,
   Trash2,
 } from 'lucide-react';
@@ -24,6 +26,7 @@ import {
   calculateWesternBlotLysisRecipe,
   calculateWesternBlotUsedWells,
   createWesternBlotLaneLabels,
+  resolveWesternBlotRepeatSourceIndex,
   westernBlotMolecularWeightPosition,
   type WesternBlotGelThickness,
 } from './calculations';
@@ -37,6 +40,9 @@ import {
 type ToolTab = 'setup' | 'guide';
 type ProteinRole = 'target' | 'reference';
 type WellCount = 10 | 15 | 30;
+type GelPercentage = '6' | '8' | '10' | '12.5' | '';
+type SecondaryAntibody = '鼠抗' | '兔抗' | '';
+type LysisExcessVolume = '100' | '200';
 
 type ProteinInput = {
   id: string;
@@ -58,19 +64,21 @@ type PlateDesign = {
 type WesternBlotSession = {
   plateCount: 2 | 4 | '';
   thickness: WesternBlotGelThickness | '';
-  gelPercentage: string;
+  gelPercentage: GelPercentage;
   sampleCount: string;
   sampleNames: string[];
   loadingVolume: string;
   firstMarkerVolume: string;
   lastMarkerVolume: string;
-  lysisExcessVolume: string;
+  addLysisExcess: boolean;
+  lysisExcessVolume: LysisExcessVolume;
   primaryDilution: string;
-  secondaryAntibody: string;
+  secondaryAntibody: SecondaryAntibody;
   voltage: string;
   transferCurrent: string;
   proteins: ProteinInput[];
   plates: PlateDesign[];
+  notes: Record<string, string>;
 };
 
 const STORAGE_KEY = 'labsop:western-blot-session:v1';
@@ -108,13 +116,15 @@ function createDefaultSession(): WesternBlotSession {
     loadingVolume: '',
     firstMarkerVolume: '5',
     lastMarkerVolume: '3',
-    lysisExcessVolume: '',
+    addLysisExcess: false,
+    lysisExcessVolume: '100',
     primaryDilution: '',
     secondaryAntibody: '',
     voltage: '250',
     transferCurrent: '400',
     proteins: DEFAULT_PROTEINS.map((protein) => ({ ...protein })),
     plates: [createPlate(1, false), createPlate(2, true), createPlate(3, false), createPlate(4, true)],
+    notes: {},
   };
 }
 
@@ -124,6 +134,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function stringValue(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+  if (!isRecord(value)) return {};
+  return Object.entries(value).reduce<Record<string, string>>((result, [key, entry]) => {
+    if (typeof entry === 'string') result[key] = entry;
+    return result;
+  }, {});
 }
 
 function loadSession(): WesternBlotSession {
@@ -179,23 +197,28 @@ function loadSession(): WesternBlotSession {
         cutLines,
       };
     });
+    const normalizedPlates = plates.map((plate) => plate.number === 4 && plates[2].repeated
+      ? { ...plate, repeated: true }
+      : plate);
 
     return {
       plateCount: parsed.plateCount === 2 || parsed.plateCount === 4 ? parsed.plateCount : '',
       thickness: parsed.thickness === 0.75 || parsed.thickness === 1 || parsed.thickness === 1.5 ? parsed.thickness : '',
-      gelPercentage: stringValue(parsed.gelPercentage, ''),
+      gelPercentage: parsed.gelPercentage === '6' || parsed.gelPercentage === '8' || parsed.gelPercentage === '10' || parsed.gelPercentage === '12.5' ? parsed.gelPercentage : '',
       sampleCount: stringValue(parsed.sampleCount, ''),
       sampleNames,
       loadingVolume: stringValue(parsed.loadingVolume, ''),
       firstMarkerVolume: stringValue(parsed.firstMarkerVolume, '5'),
       lastMarkerVolume: stringValue(parsed.lastMarkerVolume, '3'),
-      lysisExcessVolume: stringValue(parsed.lysisExcessVolume, ''),
+      addLysisExcess: parsed.addLysisExcess === true,
+      lysisExcessVolume: parsed.lysisExcessVolume === '200' ? '200' : '100',
       primaryDilution: stringValue(parsed.primaryDilution, ''),
-      secondaryAntibody: stringValue(parsed.secondaryAntibody, ''),
+      secondaryAntibody: parsed.secondaryAntibody === '鼠抗' || parsed.secondaryAntibody === '兔抗' ? parsed.secondaryAntibody : '',
       voltage: stringValue(parsed.voltage, '250'),
       transferCurrent: stringValue(parsed.transferCurrent, '400'),
       proteins: safeProteins,
-      plates,
+      plates: normalizedPlates,
+      notes: stringRecord(parsed.notes),
     };
   } catch {
     return fallback;
@@ -233,11 +256,13 @@ function NumberField({ label, value, unit, min = 0, step = 'any', onChange }: {
 
 type ConfiguredPlateDesign = PlateDesign & { wellCount: WellCount; markerId: WesternBlotMarkerId };
 
-function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine }: {
+function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnly = false, showRightCutLine = false }: {
   plate: ConfiguredPlateDesign;
   proteins: ProteinInput[];
   onChangeCutLine: (index: number, value: number) => void;
   onDeleteCutLine: (index: number) => void;
+  readOnly?: boolean;
+  showRightCutLine?: boolean;
 }) {
   const marker = westernBlotMarkers.find(({ id }) => id === plate.markerId) ?? westernBlotMarkers[0];
   const maximumWeight = Math.max(...marker.bands.map(({ molecularWeight }) => molecularWeight));
@@ -291,6 +316,9 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine }: {
         {plate.cutLines.map((line, index) => {
           const safeLine = Math.min(maximumWeight, Math.max(0, line));
           const top = westernBlotMolecularWeightPosition(safeLine, maximumWeight) ?? 50;
+          if (readOnly) {
+            return <div className="wb-cut-line readonly" style={{ top: `${top}%` }} key={`cut-${index}`}><span>切膜线</span></div>;
+          }
           return (
             <div
               className="wb-cut-line"
@@ -325,9 +353,10 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine }: {
             </div>
           );
         })}
+        {showRightCutLine && <div className="wb-right-cut-line"><span>切膜线</span></div>}
         <span className="wb-zero-label">0 kDa</span>
       </div>
-      {plate.cutLines.length > 0 && (
+      {!readOnly && plate.cutLines.length > 0 && (
         <div className="wb-cut-line-list" aria-label="切膜线位置">
           {plate.cutLines.map((line, index) => (
             <label key={`cut-control-${index}`}>
@@ -438,15 +467,19 @@ export default function WesternBlotTool() {
 
   const sampleCount = cleanNumber(session.sampleCount);
   const validSampleCount = sampleCount !== null && Number.isInteger(sampleCount) && sampleCount > 0 ? sampleCount : null;
-  const lysisExcessVolume = cleanNumber(session.lysisExcessVolume);
+  const lysisExcessVolume = session.addLysisExcess ? Number(session.lysisExcessVolume) : 0;
   const batchPlateCount = session.plateCount === '' ? 0 : session.plateCount;
   const activePlates = session.plates.slice(0, batchPlateCount);
-  const effectivePlate = (plate: PlateDesign) => plate.repeated && plate.number % 2 === 0
-    ? session.plates[plate.number - 2]
-    : plate;
+  const effectivePlate = (plate: PlateDesign) => {
+    const sourceIndex = resolveWesternBlotRepeatSourceIndex(
+      plate.number - 1,
+      session.plates.map(({ repeated }) => repeated),
+    );
+    return sourceIndex === null ? plate : session.plates[sourceIndex];
+  };
   const effectivePlates = activePlates.map(effectivePlate);
   const usedWells = validSampleCount === null ? null : calculateWesternBlotUsedWells(validSampleCount);
-  const lysisRecipe = validSampleCount !== null && lysisExcessVolume !== null
+  const lysisRecipe = validSampleCount !== null
     ? calculateWesternBlotLysisRecipe(validSampleCount, lysisExcessVolume)
     : null;
   const denaturationRecipe = validSampleCount !== null ? calculateWesternBlotDenaturationRecipe(validSampleCount) : null;
@@ -464,7 +497,6 @@ export default function WesternBlotTool() {
     if (cleanNumber(session.gelPercentage) === null || (cleanNumber(session.gelPercentage) ?? 0) <= 0) errors.push('请填写凝胶浓度。');
     if (cleanNumber(session.loadingVolume) === null || (cleanNumber(session.loadingVolume) ?? 0) <= 0) errors.push('请填写每孔上样量。');
     if (cleanNumber(session.firstMarkerVolume) === null || (cleanNumber(session.firstMarkerVolume) ?? 0) <= 0 || cleanNumber(session.lastMarkerVolume) === null || (cleanNumber(session.lastMarkerVolume) ?? 0) <= 0) errors.push('首孔和末孔 Marker 上样量须大于 0。');
-    if (lysisExcessVolume === null || lysisExcessVolume < 0) errors.push('请填写裂解液冗余体积；如不加冗余请明确填写 0。');
     if (session.proteins.length < 2 || session.proteins.some((protein) => !protein.name.trim() || (cleanNumber(protein.molecularWeight) ?? 0) <= 0)) errors.push('请填写每个蛋白的名称和大于 0 的分子量。');
     if (!session.primaryDilution.trim()) errors.push('请填写一抗稀释液浓度或预配信息。');
     if (!session.secondaryAntibody.trim()) errors.push('请填写一抗所需二抗。');
@@ -489,12 +521,25 @@ export default function WesternBlotTool() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }, [session]);
 
+  const completionResetSignature = JSON.stringify({ ...session, notes: undefined });
+
   useEffect(() => {
     setCompleted({});
-  }, [session]);
+  }, [completionResetSignature]);
 
   const updatePlate = (number: number, updater: (plate: PlateDesign) => PlateDesign) => {
     setSession((current) => ({ ...current, plates: current.plates.map((plate) => plate.number === number ? updater(plate) : plate) }));
+  };
+
+  const updateRepeatedPlate = (number: number, repeated: boolean) => {
+    setSession((current) => ({
+      ...current,
+      plates: current.plates.map((plate) => {
+        if (plate.number === number) return { ...plate, repeated };
+        if (number === 3 && repeated && plate.number === 4) return { ...plate, repeated: true };
+        return plate;
+      }),
+    }));
   };
 
   const rebuildLaneLabels = (current: WesternBlotSession, sampleNames: string[], firstVolume = current.firstMarkerVolume, lastVolume = current.lastMarkerVolume) => current.plates.map((plate) => ({
@@ -554,29 +599,71 @@ export default function WesternBlotTool() {
     setTab('setup');
   };
 
-  const selectedProteinsForPlate = (plate: PlateDesign) => session.proteins.filter(({ id }) => plate.selectedProteinIds.includes(id));
+  const renderPlateDiagrams = (includeCutLines: boolean, showRightCutLine = false) => (
+    <div className="wb-guide-diagrams">
+      {activePlates.map((plate) => {
+        const source = effectivePlate(plate);
+        if (!source.wellCount || !source.markerId) return null;
+        const diagram: ConfiguredPlateDesign = {
+          ...source,
+          number: plate.number,
+          wellCount: source.wellCount,
+          markerId: source.markerId,
+          cutLines: includeCutLines ? source.cutLines : [],
+        };
+        return (
+          <article key={plate.number}>
+            <h4>胶板 {plate.number}</h4>
+            <MarkerPlot
+              plate={diagram}
+              proteins={session.proteins}
+              readOnly
+              showRightCutLine={showRightCutLine}
+              onChangeCutLine={() => undefined}
+              onDeleteCutLine={() => undefined}
+            />
+          </article>
+        );
+      })}
+    </div>
+  );
 
   const renderDynamicItem = (item: WesternBlotSopItem) => {
     if (item.kind === 'lysis-recipe') {
       return lysisRecipe ? (
         <div className="wb-recipe-card">
           <strong>本批次裂解液 · 总体积 {formatQuantity(lysisRecipe.totalVolume)} μl</strong>
-          <p>{validSampleCount} 管 × 400 μl + 冗余 {formatQuantity(lysisRecipe.excessVolume)} μl</p>
+          <div className="wb-inline-options">
+            <label><input type="checkbox" checked={session.addLysisExcess} onChange={(event) => setSession((current) => ({ ...current, addLysisExcess: event.target.checked }))} /><span>添加冗余</span></label>
+            {session.addLysisExcess && <label><span>冗余量</span><select value={session.lysisExcessVolume} onChange={(event) => setSession((current) => ({ ...current, lysisExcessVolume: event.target.value as LysisExcessVolume }))}><option value="100">+100 μl</option><option value="200">+200 μl</option></select></label>}
+          </div>
+          <p><b>{validSampleCount} 管</b> × 400 μl {session.addLysisExcess ? <>+ 冗余 <b>{formatQuantity(lysisRecipe.excessVolume)} μl</b></> : '（不添加冗余）'}</p>
           <dl><div><dt>50× 蛋白酶抑制剂</dt><dd>{formatQuantity(lysisRecipe.proteaseInhibitor)} μl</dd></div><div><dt>50× 磷酸酶抑制剂</dt><dd>{formatQuantity(lysisRecipe.phosphataseInhibitor)} μl</dd></div><div><dt>RIPA 裂解液</dt><dd>{formatQuantity(lysisRecipe.ripa)} μl</dd></div></dl>
         </div>
-      ) : <div className="wb-inline-error"><CircleAlert size={16} />返回初始化填写样本数与裂解液冗余体积。</div>;
+      ) : <div className="wb-inline-error"><CircleAlert size={16} />返回初始化填写本次测样数。</div>;
     }
     if (item.kind === 'denaturation-recipe') {
       return denaturationRecipe ? (
         <div className="wb-recipe-card"><strong>每管取总体积 300 μl，换到 1.5 ml 离心管</strong><p>5× Loading buffer 60 μl（总体积 ÷ 5）+ 蛋白液 240 μl。</p><dl><div><dt>{validSampleCount} 管 Loading buffer 合计</dt><dd>{formatQuantity(denaturationRecipe.batch.loadingBuffer)} μl</dd></div><div><dt>{validSampleCount} 管蛋白液合计</dt><dd>{formatQuantity(denaturationRecipe.batch.protein)} μl</dd></div></dl></div>
       ) : <div className="wb-inline-error"><CircleAlert size={16} />返回初始化填写本次测样数。</div>;
     }
-    if (item.kind === 'gel-setup') return <p>取 {session.thickness ? formatQuantity(session.thickness) : '未选择'} mm 大板和对应小板，共 {batchPlateCount} 板，组装在夹子里，注入纯水验证是否漏液，至少 5 min。</p>;
+    if (item.kind === 'gel-setup') return <p>取 <b>{session.thickness ? formatQuantity(session.thickness) : '未选择'} mm</b> 大板和对应小板，共 <b>{batchPlateCount} 板</b>，组装在夹子里，注入纯水验证是否漏液，至少 5 min。</p>;
+    if (item.kind === 'gel-kit') return <p>找到 <b>{session.gelPercentage || '未选择'}% 快胶盒</b>，在小塑料杯里按照说明书配胶。凝胶浓度仅决定快胶盒选择，不改变下方试剂量。</p>;
     if (item.kind === 'gel-recipe' && gelRecipe) return (
       <div className="wb-recipe-card">
-        <strong>{session.gelPercentage || '未填写'}% 凝胶 · {session.thickness ? formatQuantity(session.thickness) : '未选择'} mm · {batchPlateCount} 板总量</strong>
-        <p>按照顺序：配下层胶 → 加促凝剂 → 灌下层胶 → 配上层胶 → 加促凝剂 → 灌上层胶。</p>
+        <strong>配胶 · {session.thickness ? formatQuantity(session.thickness) : '未选择'} mm · {batchPlateCount} 板总量</strong>
+        <p>先配下层胶并加入促凝剂；下层胶灌注完成后，再配上层胶并加入促凝剂。</p>
         <div className="wb-gel-recipe-grid"><dl><b>下层胶</b><div><dt>下层胶溶液</dt><dd>{formatQuantity(gelRecipe.batch.resolving.solution)} ml</dd></div><div><dt>下层胶缓冲液</dt><dd>{formatQuantity(gelRecipe.batch.resolving.buffer)} ml</dd></div><div><dt>促凝剂</dt><dd>{formatQuantity(gelRecipe.batch.resolving.accelerator)} μl</dd></div></dl><dl><b>上层胶</b><div><dt>上层胶溶液</dt><dd>{formatQuantity(gelRecipe.batch.stacking.solution)} ml</dd></div><div><dt>上层胶缓冲液</dt><dd>{formatQuantity(gelRecipe.batch.stacking.buffer)} ml</dd></div><div><dt>促凝剂</dt><dd>{formatQuantity(gelRecipe.batch.stacking.accelerator)} μl</dd></div></dl></div>
+      </div>
+    );
+    if (item.kind === 'gel-pouring' && gelRecipe) return (
+      <div className="wb-recipe-card">
+        <strong>灌胶 · 每板体积</strong>
+        <p>下表混合液体积按两种胶液之和计算，忽略促凝剂体积。</p>
+        <div className="wb-pour-table" role="table" aria-label="每板灌胶体积">
+          <div role="row"><b role="columnheader">胶板</b><b role="columnheader">下层胶混合液</b><b role="columnheader">上层胶混合液</b></div>
+          {activePlates.map((plate) => <div role="row" key={plate.number}><span role="cell">胶板 {plate.number}</span><strong role="cell">{formatQuantity(gelRecipe.pourPerPlate.resolving)} ml</strong><strong role="cell">{formatQuantity(gelRecipe.pourPerPlate.stacking)} ml</strong></div>)}
+        </div>
       </div>
     );
     if (item.kind === 'buffer-recipe' && bufferRecipe) return (
@@ -586,31 +673,42 @@ export default function WesternBlotTool() {
       <div className="wb-recipe-card">
         <strong>本批次上样与电泳槽设置</strong>
         <p>放入电泳槽，两板之间灌满电泳液，然后灌至 <b>{batchPlateCount} 板水位线</b>。每个样本孔上样 <b>{session.loadingVolume || '未填写'} μl</b>，首孔 Marker <b>{session.firstMarkerVolume || '未填写'} μl</b>，末孔 Marker <b>{session.lastMarkerVolume || '未填写'} μl</b>。</p>
-        <div className="wb-guide-plate-list">{activePlates.map((plate) => {
-          const source = effectivePlate(plate);
-          const marker = westernBlotMarkers.find(({ id }) => id === source.markerId);
-          return <p key={plate.number}><b>第 {plate.number} 板{plate.repeated ? `（重复第 ${plate.number - 1} 板）` : ''}</b>：{source.wellCount || '未选'} 孔；{marker ? `${marker.name} ${marker.rangeLabel}` : '未选 Marker'}；{selectedProteinsForPlate(source).map(({ name }) => name || '未命名蛋白').join('、')}</p>;
-        })}</div>
       </div>
     );
     if (item.kind === 'electrophoresis-run') return <p>电压设置为 <b>{session.voltage || '未填写'} V</b>，跑至最大 Marker 离开上层胶且最小 Marker 到底、各小 Marker 充分分散，约 25 min。</p>;
+    if (item.kind === 'electrophoresis-layout') return <div><p>按照下方胶板设计图上样：</p>{renderPlateDiagrams(false)}</div>;
     if (item.kind === 'transfer-setup') return <p>取 <b>{batchPlateCount} 个夹板</b>放在灌转膜液的水槽里浸透水，取 <b>{batchPlateCount} 个 PVDF 膜</b>用无水乙醇激活。</p>;
     if (item.kind === 'transfer-run') return <p>把夹板放进转膜芯里，注意膜朝向红色面；放入电泳槽，另一空槽放冰盒，灌满转膜液，在盆里冰浴，电流 <b>{session.transferCurrent || '未填写'} mA</b>，约 60 min。</p>;
     if (item.kind === 'primary-antibody') return (
-      <div className="wb-recipe-card"><strong>按本批次膜图切膜并孵育一抗</strong><div className="wb-guide-plate-list">{activePlates.map((plate) => {
-        const source = effectivePlate(plate);
-        const names = selectedProteinsForPlate(source).map((protein) => `${protein.name || '未命名'} ${protein.molecularWeight || '?'} kDa`).join('、');
-        const cuts = source.cutLines.length ? source.cutLines.map((line) => `${formatQuantity(line)} kDa`).join('、') : '未添加切膜线';
-        return <p key={plate.number}><b>第 {plate.number} 板{plate.repeated ? `（重复第 ${plate.number - 1} 板）` : ''}</b>：{names || '未选择蛋白'}；{cuts}</p>;
-      })}</div><p>根据图纸切膜，剪左上角标记，加 3 ml 稀释后的一抗，4℃ 冰箱慢摇过夜。</p><p>一抗稀释液浓度（或预配）：<b>{session.primaryDilution || '未填写'}</b></p></div>
+      <div className="wb-recipe-card"><strong>按本批次膜图切膜并孵育一抗</strong>{renderPlateDiagrams(true, true)}<p>根据图纸切膜，剪左上角标记，加 3 ml 稀释后的一抗，4℃ 冰箱慢摇过夜。</p><p>一抗稀释液浓度（或预配）：<b>{session.primaryDilution || '未填写'}</b></p></div>
     );
-    if (item.kind === 'secondary-antibody') return <div className="wb-recipe-card"><strong>二抗：{session.secondaryAntibody || '未填写'}</strong><p>回收一抗，TBST 快摇漂洗 10 min × 3 次；加 3 ml 稀释后的二抗，慢摇 1 h；回收二抗，TBST 快摇漂洗 10 min × 3 次。</p></div>;
+    if (item.kind === 'secondary-antibody') return <p>加 3 ml 稀释后的 <b>{session.secondaryAntibody || '未选择'}</b>，慢摇 1 h。</p>;
     return <p>{item.text}</p>;
   };
 
   const currentSection = westernBlotSopSections[guidePage];
   const completedCount = Object.values(completed).filter(Boolean).length;
   const totalSteps = westernBlotSopSections.reduce((total, section) => total + section.items.length, 0);
+  const completedPages = westernBlotSopSections.map((section) => section.items.every((_, index) => completed[`${section.id}-${index}`]));
+  const renderPageDots = (label: string) => (
+    <div className="page-dots" aria-label={label}>
+      {westernBlotSopSections.map((section, index) => {
+        const isComplete = completedPages[index];
+        return (
+          <button
+            type="button"
+            key={section.id}
+            className={[index === guidePage ? 'active' : '', isComplete ? 'completed' : ''].filter(Boolean).join(' ')}
+            onClick={() => setGuidePage(index)}
+            aria-current={index === guidePage ? 'page' : undefined}
+            aria-label={`第 ${index + 1} 页：${section.title}${isComplete ? '，已完成' : ''}`}
+          >
+            {isComplete ? <Check size={14} aria-hidden="true" /> : index + 1}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <main className="detail-page qpcr-workspace wb-workspace">
@@ -634,12 +732,11 @@ export default function WesternBlotTool() {
             <div className="wb-field-grid">
               <label className="wb-select-field"><span>板数</span><select value={session.plateCount} onChange={(event) => setSession((current) => ({ ...current, plateCount: event.target.value === '' ? '' : Number(event.target.value) as 2 | 4 }))}><option value="">请选择</option><option value={2}>2 板</option><option value={4}>4 板</option></select></label>
               <label className="wb-select-field"><span>板厚度（全局）</span><select value={session.thickness} onChange={(event) => setSession((current) => ({ ...current, thickness: event.target.value === '' ? '' : Number(event.target.value) as WesternBlotGelThickness }))}><option value="">请选择</option><option value={0.75}>0.75 mm</option><option value={1}>1.0 mm</option><option value={1.5}>1.5 mm</option></select></label>
-              <NumberField label="凝胶浓度" value={session.gelPercentage} unit="%" onChange={(value) => setSession((current) => ({ ...current, gelPercentage: value }))} />
+              <label className="wb-select-field"><span>快胶盒浓度</span><select value={session.gelPercentage} onChange={(event) => setSession((current) => ({ ...current, gelPercentage: event.target.value as GelPercentage }))}><option value="">请选择</option><option value="6">6%</option><option value="8">8%</option><option value="10">10%</option><option value="12.5">12.5%</option></select></label>
               <NumberField label="本次测样数" value={session.sampleCount} unit="个" min={1} step="1" onChange={updateSampleCount} />
               <NumberField label="每孔上样量" value={session.loadingVolume} unit="μl" onChange={(value) => setSession((current) => ({ ...current, loadingVolume: value }))} />
               <NumberField label="首孔 Marker" value={session.firstMarkerVolume} unit="μl" onChange={(value) => setSession((current) => ({ ...current, firstMarkerVolume: value, plates: rebuildLaneLabels(current, current.sampleNames, value, current.lastMarkerVolume) }))} />
               <NumberField label="末孔 Marker" value={session.lastMarkerVolume} unit="μl" onChange={(value) => setSession((current) => ({ ...current, lastMarkerVolume: value, plates: rebuildLaneLabels(current, current.sampleNames, current.firstMarkerVolume, value) }))} />
-              <NumberField label="裂解液冗余体积" value={session.lysisExcessVolume} unit="μl" onChange={(value) => setSession((current) => ({ ...current, lysisExcessVolume: value }))} />
               <NumberField label="电泳电压" value={session.voltage} unit="V" onChange={(value) => setSession((current) => ({ ...current, voltage: value }))} />
               <NumberField label="转膜电流" value={session.transferCurrent} unit="mA" onChange={(value) => setSession((current) => ({ ...current, transferCurrent: value }))} />
             </div>
@@ -659,14 +756,14 @@ export default function WesternBlotTool() {
 
           <div className="wb-setup-section">
             <div className="setup-card-title"><span>抗体</span><small>原文括号字段</small></div>
-            <div className="wb-text-field-grid"><label><span>一抗稀释液浓度（或预配）</span><input value={session.primaryDilution} onChange={(event) => setSession((current) => ({ ...current, primaryDilution: event.target.value }))} /></label><label><span>一抗所需二抗</span><input value={session.secondaryAntibody} onChange={(event) => setSession((current) => ({ ...current, secondaryAntibody: event.target.value }))} /></label></div>
+            <div className="wb-text-field-grid"><label><span>一抗稀释液浓度（或预配）</span><input value={session.primaryDilution} onChange={(event) => setSession((current) => ({ ...current, primaryDilution: event.target.value }))} /></label><label className="wb-select-field"><span>一抗所需二抗</span><select value={session.secondaryAntibody} onChange={(event) => setSession((current) => ({ ...current, secondaryAntibody: event.target.value as SecondaryAntibody }))}><option value="">请选择</option><option value="鼠抗">鼠抗</option><option value="兔抗">兔抗</option></select></label></div>
           </div>
 
           <div className="wb-setup-section wb-design-section">
             <div className="setup-card-title"><span>胶板设计器</span><small>膜图高度按当前 Marker 的 0 kDa 至上限线性显示</small></div>
             {activePlates.length ? activePlates.map((plate) => (
               <article className="wb-plate-card" key={plate.number}>
-                <header><div><span>PLATE {plate.number}</span><h3>第 {plate.number} 板</h3></div>{plate.number > 1 && <label className="wb-repeat-toggle"><input type="checkbox" checked={plate.repeated} onChange={(event) => updatePlate(plate.number, (current) => ({ ...current, repeated: event.target.checked }))} /><span>重复板（重复第 {plate.number - 1} 板）</span></label>}</header>
+                <header><div><span>PLATE {plate.number}</span><h3>第 {plate.number} 板</h3></div>{plate.number > 1 && !(plate.number === 4 && session.plates[2].repeated) && <label className="wb-repeat-toggle"><input type="checkbox" checked={plate.repeated} onChange={(event) => updateRepeatedPlate(plate.number, event.target.checked)} /><span>重复板（重复第 {plate.number - 1} 板）</span></label>}</header>
                 <PlateDesigner
                   plate={plate}
                   sourcePlateNumber={plate.number > 1 ? plate.number - 1 : undefined}
@@ -695,8 +792,12 @@ export default function WesternBlotTool() {
               return <article className={`wb-guide-item ${completed[key] ? 'completed' : ''}`} key={key}><button type="button" className="wb-step-check" onClick={() => setCompleted((current) => ({ ...current, [key]: !current[key] }))} aria-label={completed[key] ? '标记为未完成' : '标记为已完成'}>{completed[key] ? <Check size={15} /> : <span>{index + 1}</span>}</button><div>{renderDynamicItem(item)}{item.details && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}{item.warning && <div className="wb-warning"><CircleAlert size={15} />{item.warning}</div>}</div></article>;
             })}
           </div>
-          <div className="guide-pagination"><button type="button" disabled={guidePage === 0} onClick={() => setGuidePage((page) => Math.max(0, page - 1))}><ChevronLeft size={16} />上一步</button><span>{guidePage + 1} / {westernBlotSopSections.length}</span><button type="button" disabled={guidePage === westernBlotSopSections.length - 1} onClick={() => setGuidePage((page) => Math.min(westernBlotSopSections.length - 1, page + 1))}>下一步<ChevronRight size={16} /></button></div>
-          <div className="guide-floating-pagination"><div className="progress-track"><span style={{ width: `${(guidePage + 1) / westernBlotSopSections.length * 100}%` }} /></div><button type="button" disabled={guidePage === 0} onClick={() => setGuidePage((page) => Math.max(0, page - 1))} aria-label="上一页"><ChevronLeft size={17} /></button><div className="page-dots">{westernBlotSopSections.map((section, index) => <button type="button" key={section.id} className={index === guidePage ? 'active' : ''} onClick={() => setGuidePage(index)} aria-label={`打开${section.title}`} />)}</div><button type="button" disabled={guidePage === westernBlotSopSections.length - 1} onClick={() => setGuidePage((page) => Math.min(westernBlotSopSections.length - 1, page + 1))} aria-label="下一页"><ChevronRight size={17} /></button></div>
+          <label className="notes-field">
+            <span><NotebookPen size={17} />本页备注 <small><Save size={13} />自动保存于此浏览器</small></span>
+            <textarea value={session.notes[currentSection.id] ?? ''} onChange={(event) => setSession((current) => ({ ...current, notes: { ...current.notes, [currentSection.id]: event.target.value } }))} placeholder="记录样本状态、异常情况或需要交接的信息…" />
+          </label>
+          <div className="guide-pagination"><button type="button" disabled={guidePage === 0} onClick={() => setGuidePage((page) => Math.max(0, page - 1))}><ChevronLeft size={16} />上一步</button>{renderPageDots('SOP 页码')}<button type="button" disabled={guidePage === westernBlotSopSections.length - 1} onClick={() => setGuidePage((page) => Math.min(westernBlotSopSections.length - 1, page + 1))}>下一步<ChevronRight size={16} /></button></div>
+          <div className="guide-floating-pagination"><div className="progress-track"><span style={{ width: `${totalSteps ? completedCount / totalSteps * 100 : 0}%` }} /></div><button type="button" disabled={guidePage === 0} onClick={() => setGuidePage((page) => Math.max(0, page - 1))} aria-label="上一页"><ChevronLeft size={17} /></button>{renderPageDots('浮动 SOP 页码')}<button type="button" disabled={guidePage === westernBlotSopSections.length - 1} onClick={() => setGuidePage((page) => Math.min(westernBlotSopSections.length - 1, page + 1))} aria-label="下一页"><ChevronRight size={17} /></button></div>
         </section>
       )}
     </main>
