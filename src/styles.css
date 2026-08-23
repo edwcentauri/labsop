@@ -173,22 +173,24 @@ button { color: inherit; }
 .pdf-view-options > button.active, .pdf-mode-switch button.active { color: white; border-color: #0f766e; background: #0f766e; }
 .pdf-mode-switch { display: inline-flex; gap: 4px; padding: 3px; border-radius: 12px; background: #edf3f1; }
 .pdf-mode-switch button { height: 32px; border-color: transparent; background: transparent; font-size: 11px; }
-.pdf-reader-body { position: relative; display: flex; min-height: 580px; }
-.pdf-canvas-frame { flex: 1; height: min(72vh, 760px); min-width: 0; min-height: 580px; padding: 22px 16px; overflow: auto; background: #dfe7e4; touch-action: none; overscroll-behavior: contain; cursor: grab; }
+.pdf-reader-body { position: relative; isolation: isolate; display: flex; min-height: 580px; }
+.pdf-canvas-frame { position: relative; z-index: 0; isolation: isolate; flex: 1; height: min(72vh, 760px); min-width: 0; min-height: 580px; padding: 22px 16px; overflow: auto; background: #dfe7e4; touch-action: none; overscroll-behavior: contain; cursor: grab; }
 .pdf-canvas-frame:active { cursor: grabbing; }
 .pdf-document { width: max-content; min-width: 100%; height: fit-content; transform-origin: center top; }
 .pdf-document-paged { display: flex; justify-content: center; }
 .pdf-document-scroll { display: flex; flex-direction: column; align-items: center; gap: 18px; }
-.pdf-page-shell { width: fit-content; height: fit-content; background: white; box-shadow: 0 10px 28px #1c332f26; }
+.pdf-page-shell { flex: 0 0 auto; width: fit-content; height: fit-content; background: white; box-shadow: 0 10px 28px #1c332f26; }
+.pdf-page-placeholder { background: linear-gradient(135deg, #f8faf9, #eef2f0); box-shadow: 0 7px 22px #1c332f1a; }
 .react-pdf__Page { background: white; }
 .react-pdf__Page__annotations .linkAnnotation > a:focus-visible { outline: 3px solid #0f766e; outline-offset: 2px; }
-.pdf-outline-panel { position: relative; z-index: 1; flex: 0 0 280px; width: 280px; height: min(72vh, 760px); min-height: 580px; overflow: hidden; border-right: 1px solid #cddbd7; background: #f8faf9; box-shadow: 12px 0 28px #263f3a12; }
+.pdf-outline-backdrop { display: none; }
+.pdf-outline-panel { position: relative; z-index: 4; flex: 0 0 280px; width: 280px; height: min(72vh, 760px); min-height: 580px; overflow: hidden; pointer-events: auto; touch-action: pan-y; border: 0; border-right: 1px solid #cddbd7; background: #f8faf9; box-shadow: 12px 0 28px #263f3a12; }
 .pdf-outline-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 68px; padding: 12px 14px 12px 18px; border-bottom: 1px solid #dce5e2; }
 .pdf-outline-header div { display: flex; flex-direction: column; gap: 2px; }
 .pdf-outline-header span { color: #80918e; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
 .pdf-outline-header strong { font-size: 16px; }
 .pdf-outline-header button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #dce5e2; border-radius: 10px; background: white; cursor: pointer; }
-.pdf-outline-content { height: calc(100% - 68px); padding: 12px 8px 24px; overflow: auto; }
+.pdf-outline-content { height: calc(100% - 68px); padding: 12px 8px 24px; overflow: auto; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .pdf-outline-state { padding: 34px 18px; color: #738681; font-size: 12px; line-height: 1.6; text-align: center; }
 .pdf-outline-state.error { color: #a04c3b; }
 .react-pdf__Outline ul { margin: 0; padding-left: 17px; list-style: none; }
@@ -275,7 +277,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .pdf-view-options > button, .pdf-mode-switch { flex: 0 0 auto; }
   .pdf-reader-body { min-height: 480px; }
   .pdf-canvas-frame { height: 68vh; min-height: 480px; padding: 14px 8px; }
-  .pdf-outline-panel { position: absolute; inset: 0 auto 0 0; width: min(86vw, 300px); height: 68vh; min-height: 480px; }
+  .pdf-outline-backdrop { position: absolute; inset: 0; z-index: 3; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: #122b2738; cursor: pointer; }
+  .pdf-outline-panel { position: absolute; inset: 0 auto 0 0; z-index: 4; width: min(86vw, 300px); height: 68vh; min-height: 480px; }
   .markdown-card { margin-top: 26px; border-radius: 22px; }
   .version-history-layer { align-items: end; padding: 12px; }
   .version-history-dialog { max-height: 84vh; padding: 22px 18px; border-radius: 22px; }
@@ -366,6 +369,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .version-history-list p { color: #b4c7c2; }
 [data-theme='dark'] .pdf-viewer { border-color: #2b3d39; background: #111b19; box-shadow: none; }
 [data-theme='dark'] .pdf-canvas-frame { background: #101917; }
+[data-theme='dark'] .pdf-page-placeholder { background: linear-gradient(135deg, #172320, #111b19); box-shadow: 0 7px 22px #0004; }
 [data-theme='dark'] .pdf-controls button,
 [data-theme='dark'] .pdf-controls a,
 [data-theme='dark'] .pdf-view-options > button,
