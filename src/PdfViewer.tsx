@@ -44,7 +44,6 @@ const MAX_SCALE = 3;
 const SCALE_STEP = .15;
 const DOUBLE_CLICK_SCALE = 2;
 const SWIPE_DISTANCE = 64;
-const POINTER_CAPTURE_DISTANCE = 8;
 const SCROLL_RENDER_RADIUS = 1;
 const DEFAULT_PAGE_RATIO = Math.SQRT2;
 const RENDER_PIXEL_RATIO = typeof window === 'undefined'
@@ -279,10 +278,20 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'touch') return;
+    const isInteractiveTarget = event.target instanceof Element
+      && Boolean(event.target.closest('a, button'));
+    if (!isInteractiveTarget) capturePointer(event.currentTarget, event.pointerId);
     activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (activePointers.current.size > 2) {
       activePointers.current.delete(event.pointerId);
+      try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // The ignored pointer may already have ended.
+      }
       return;
     }
 
@@ -333,9 +342,6 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
 
     const pan = panGesture.current;
     if (!pan || pan.pointerId !== event.pointerId) return;
-    if (Math.hypot(event.clientX - pan.startX, event.clientY - pan.startY) > POINTER_CAPTURE_DISTANCE) {
-      capturePointer(frame, event.pointerId);
-    }
     frame.scrollLeft = pan.startScrollLeft - (event.clientX - pan.startX);
     frame.scrollTop = pan.startScrollTop - (event.clientY - pan.startY);
   };
