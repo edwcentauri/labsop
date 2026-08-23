@@ -38,9 +38,12 @@ export type WesternBlotSopItemKind =
   | 'lysis-recipe'
   | 'denaturation-recipe'
   | 'gel-setup'
+  | 'gel-kit'
   | 'gel-recipe'
+  | 'gel-pouring'
   | 'buffer-recipe'
   | 'electrophoresis-setup'
+  | 'electrophoresis-layout'
   | 'electrophoresis-run'
   | 'transfer-setup'
   | 'transfer-run'
@@ -94,8 +97,9 @@ export const westernBlotSopSections: WesternBlotSopSection[] = [
     summary: '仅显示本批次板厚度对应的配胶操作与总量。',
     items: [
       { kind: 'gel-setup' },
-      { kind: 'text', text: '找到所需浓度的配胶试剂盒，在小塑料杯里按照说明书配胶；下方配方已按本批次板数计算。' },
+      { kind: 'gel-kit' },
       { kind: 'gel-recipe' },
+      { kind: 'gel-pouring' },
       { kind: 'text', text: '凝固时间约 30 min，建议在此期间配电泳液。' },
     ],
   },
@@ -117,7 +121,7 @@ export const westernBlotSopSections: WesternBlotSopSection[] = [
     items: [
       { kind: 'text', text: '把凝固的胶板放在电泳仪里，向上卡紧以卡住小板。' },
       { kind: 'electrophoresis-setup' },
-      { kind: 'text', text: '按照胶板设计图上样。' },
+      { kind: 'electrophoresis-layout' },
       { kind: 'electrophoresis-run' },
       { kind: 'text', text: '转膜液放 -4℃ 冰箱预冷。' },
     ],
@@ -152,15 +156,13 @@ export const westernBlotSopSections: WesternBlotSopSection[] = [
   {
     id: 'secondary',
     kicker: '09 · SECONDARY ANTIBODY',
-    title: '二抗孵育',
-    summary: '回收一抗，完成漂洗、二抗孵育与再次漂洗。',
-    items: [{ kind: 'secondary-antibody' }],
-  },
-  {
-    id: 'exposure',
-    kicker: '10 · EXPOSURE',
-    title: '曝光',
-    summary: '完成曝光。',
-    items: [{ kind: 'text', text: '曝光。' }],
+    title: '二抗孵育与曝光',
+    summary: '依次完成一抗回收与漂洗、二抗孵育、二抗回收与漂洗，随后曝光。',
+    items: [
+      { kind: 'text', text: '回收一抗，TBST 快摇漂洗 10 min × 3 次。' },
+      { kind: 'secondary-antibody' },
+      { kind: 'text', text: '回收二抗，TBST 快摇漂洗 10 min × 3 次。' },
+      { kind: 'text', text: '曝光。' },
+    ],
   },
 ];

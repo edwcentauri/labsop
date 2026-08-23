@@ -933,9 +933,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-add-cut { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 40px; padding: 0 12px; border: 1px solid #d5cdef; border-radius: 10px; color: #604e99; background: #f7f4ff; font-size: 10px; font-weight: 750; cursor: pointer; }
 .wb-add-cut:disabled { opacity: .45; cursor: not-allowed; }
 .wb-inline-error { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 10px 12px; border: 1px solid #efcfc5; border-radius: 10px; color: #9e4e3d; background: #fff8f5; font-size: 10px; line-height: 1.55; }
-.wb-lane-editor,
 .wb-lane-labels { display: grid; min-width: max-content; }
-.wb-lane-editor { gap: 4px; margin-top: 16px; overflow-x: auto; padding-bottom: 5px; }
+.wb-lane-editor { display: grid; width: 100%; min-width: 0; max-width: 100%; gap: 4px; margin-top: 16px; overflow-x: auto; padding-bottom: 8px; overscroll-behavior-inline: contain; touch-action: pan-x; }
 .wb-lane-editor label { display: flex; flex-direction: column; gap: 4px; }
 .wb-lane-editor label span { color: #879590; font-size: 8px; text-align: center; }
 .wb-lane-editor input { min-height: 34px; padding: 0 7px; border-radius: 8px; font-size: 9px; text-align: center; }
@@ -959,8 +958,11 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-protein-band i { position: absolute; right: 0; left: 0; height: 7px; margin-top: -3px; background: #111b19; box-shadow: 0 1px 2px #0003; }
 .wb-protein-band small { position: absolute; top: 5px; left: 5px; z-index: 2; padding: 1px 4px; color: #283d38; background: #ffffffc9; font-size: 7px; font-weight: 750; }
 .wb-cut-line { position: absolute; right: 0; left: 0; z-index: 5; height: 15px; margin-top: -7px; border-top: 2px solid #db3d42; outline: 0; cursor: ns-resize; }
+.wb-cut-line.readonly { pointer-events: none; }
 .wb-cut-line:focus { border-top-color: #b0151d; box-shadow: 0 -2px 0 #ffffff, 0 -4px 0 #b0151d; }
 .wb-cut-line > span { position: absolute; top: -16px; right: 7px; display: flex; align-items: center; gap: 2px; padding: 1px 4px; color: #b82b31; background: #fff5f5d9; font-size: 7px; font-weight: 800; }
+.wb-right-cut-line { position: absolute; top: 0; right: 0; bottom: 0; z-index: 6; border-right: 2px solid #db3d42; pointer-events: none; }
+.wb-right-cut-line span { position: absolute; top: 8px; right: 3px; padding: 3px 1px; color: #b82b31; background: #fff5f5dc; font-size: 7px; font-weight: 800; line-height: 1; writing-mode: vertical-rl; }
 .wb-zero-label { position: absolute; bottom: 3px; left: 4px; color: #7b8986; font-size: 7px; }
 .wb-cut-line-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
 .wb-cut-line-list label { display: flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 5px 0 9px; border: 1px solid #ead0d0; border-radius: 9px; color: #8b4c4c; background: #fffafa; font-size: 9px; }
@@ -989,6 +991,24 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-gel-recipe-grid dl > b { color: #5e4d96; font-size: 10px; }
 .wb-guide-plate-list { margin: 9px 0; padding: 8px 10px; border-radius: 9px; background: #f7f8fb; }
 .wb-guide-plate-list p { margin: 3px 0; font-size: 9px; }
+.wb-inline-options { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 11px 0 7px; padding: 10px; border-radius: 9px; background: #f5f8f7; }
+.wb-inline-options label { display: inline-flex; align-items: center; gap: 6px; color: #4f6863; font-size: 10px; font-weight: 700; }
+.wb-inline-options input { accent-color: #6f5cad; }
+.wb-inline-options select { min-height: 32px; padding: 0 28px 0 8px; border: 1px solid #cfddd9; border-radius: 8px; color: #29443f; background: white; font: inherit; font-size: 10px; }
+.wb-pour-table { margin-top: 10px; overflow: hidden; border: 1px solid #dce6e3; border-radius: 10px; }
+.wb-pour-table > div { display: grid; grid-template-columns: .7fr 1fr 1fr; }
+.wb-pour-table > div + div { border-top: 1px solid #e5ecea; }
+.wb-pour-table > div > * { margin: 0; padding: 9px; color: #526a65; font-size: 9px; text-align: center; }
+.wb-pour-table > div:first-child { background: #f2f6f5; }
+.wb-pour-table strong { color: #24433d; }
+.wb-guide-diagrams { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.wb-guide-diagrams > article { min-width: 0; padding: 12px; overflow: hidden; border: 1px solid #dce6e3; border-radius: 12px; background: #f9fbfa; }
+.wb-guide-diagrams h4 { margin: 0 0 8px; color: #5e4d96; font-size: 11px; }
+.wb-guide-diagrams .wb-design-table { margin-top: 0; }
+.wb-guide-panel .page-dots { min-width: 0; overflow-x: auto; padding: 2px; }
+.wb-guide-panel .page-dots button { flex: 0 0 auto; }
+.wb-guide-panel .guide-pagination .page-dots { justify-content: center; }
+.wb-guide-panel .guide-pagination .page-dots button { width: 27px; min-height: 27px; height: 27px; padding: 0; border-radius: 50%; font-size: 9px; }
 
 @media (max-width: 960px) {
   .wb-field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1002,9 +1022,12 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .wb-setup-section { padding: 16px; border-radius: 16px; }
   .wb-field-grid { grid-template-columns: 1fr 1fr; }
   .wb-sample-grid { grid-template-columns: 1fr 1fr; }
-  .wb-protein-input { grid-template-columns: 56px 1fr 36px; }
-  .wb-protein-input > label:nth-of-type(2) { grid-column: 2 / 3; }
-  .wb-protein-input > button { grid-column: 3; grid-row: 1 / 3; align-self: center; }
+  .wb-protein-input { grid-template-columns: minmax(0, 1fr) 40px; }
+  .wb-protein-input > b { grid-column: 1; }
+  .wb-protein-input > label { grid-column: 1 / -1; min-width: 0; }
+  .wb-protein-input > button { grid-column: 2; grid-row: 1; align-self: center; }
+  .wb-protein-input .wb-inline-number input { min-width: 100px; font-size: 15px; }
+  .wb-protein-input .wb-inline-number b { flex: 0 0 auto; min-width: 34px; padding-right: 8px; }
   .wb-text-field-grid { grid-template-columns: 1fr; }
   .wb-design-section { padding: 0; }
   .wb-plate-card > header { align-items: flex-start; flex-direction: column; }
@@ -1012,7 +1035,6 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .wb-plate-controls { grid-template-columns: 1fr; }
   .wb-plate-controls fieldset { grid-column: auto; }
   .wb-add-cut { width: 100%; }
-  .wb-lane-editor { margin-right: -14px; }
   .wb-gel-recipe-grid { grid-template-columns: 1fr; }
   .wb-guide-item { grid-template-columns: 30px 1fr; padding: 12px; }
 }
@@ -1020,10 +1042,10 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 @media (max-width: 430px) {
   .wb-field-grid,
   .wb-sample-grid { grid-template-columns: 1fr; }
-  .wb-protein-input { grid-template-columns: 1fr 36px; }
-  .wb-protein-input > b { grid-column: 1 / -1; }
-  .wb-protein-input > label { grid-column: 1; }
-  .wb-protein-input > button { grid-column: 2; grid-row: 2 / 4; }
+  .wb-protein-input { grid-template-columns: minmax(0, 1fr) 36px; }
+  .wb-guide-panel .page-dots button { width: 23px; height: 23px; }
+  .wb-guide-panel .guide-pagination .page-dots button { width: 23px; min-height: 23px; height: 23px; }
+  .wb-pour-table > div > * { padding: 7px 4px; font-size: 8px; }
 }
 
 [data-theme='dark'] .wb-hero { background: radial-gradient(circle at 88% 8%, #312a4b 0 2%, transparent 25%), linear-gradient(145deg, #151f1d, #171522); }
@@ -1067,6 +1089,15 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .wb-inline-error,
 [data-theme='dark'] .wb-validation-summary { color: #efa392; border-color: #654038; background: #2b1d1a; }
 [data-theme='dark'] .wb-warning { color: #d9c38e; border-color: #5a4a27; background: #292417; }
+[data-theme='dark'] .wb-inline-options,
+[data-theme='dark'] .wb-pour-table > div:first-child,
+[data-theme='dark'] .wb-guide-diagrams > article { border-color: #30433f; background: #101b19; }
+[data-theme='dark'] .wb-inline-options select { color: #d8e6e2; border-color: #36504a; background: #12211e; }
+[data-theme='dark'] .wb-pour-table,
+[data-theme='dark'] .wb-pour-table > div + div { border-color: #30433f; }
+[data-theme='dark'] .wb-pour-table > div > * { color: #aebfbb; }
+[data-theme='dark'] .wb-pour-table strong { color: #dbe8e5; }
+[data-theme='dark'] .wb-guide-diagrams h4 { color: #c5b6ef; }
 
 @media (prefers-reduced-motion: reduce) {
   .wb-cut-line { scroll-behavior: auto; }

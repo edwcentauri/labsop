@@ -408,6 +408,10 @@ export type WesternBlotGelRecipe = {
     resolving: WesternBlotGelMixture;
     stacking: WesternBlotGelMixture;
   };
+  pourPerPlate: {
+    resolving: number;
+    stacking: number;
+  };
 };
 
 const WESTERN_BLOT_GEL_RECIPES: Record<WesternBlotGelThickness, WesternBlotGelRecipe['perPlate']> = {
@@ -444,6 +448,10 @@ export function calculateWesternBlotGelRecipe(
     batch: {
       resolving: multiplyMixture(perPlate.resolving),
       stacking: multiplyMixture(perPlate.stacking),
+    },
+    pourPerPlate: {
+      resolving: perPlate.resolving.solution + perPlate.resolving.buffer,
+      stacking: perPlate.stacking.solution + perPlate.stacking.buffer,
     },
   };
 }
@@ -513,4 +521,18 @@ export function westernBlotMolecularWeightPosition(
     return null;
   }
   return 100 - (molecularWeight / maximumMarkerWeight) * 100;
+}
+
+export function resolveWesternBlotRepeatSourceIndex(
+  plateIndex: number,
+  repeatedPlates: boolean[],
+): number | null {
+  if (!Number.isInteger(plateIndex) || plateIndex < 0 || plateIndex >= repeatedPlates.length) return null;
+  let sourceIndex = plateIndex;
+  let remainingDepth = repeatedPlates.length;
+  while (sourceIndex > 0 && repeatedPlates[sourceIndex] && remainingDepth > 0) {
+    sourceIndex -= 1;
+    remainingDepth -= 1;
+  }
+  return sourceIndex;
 }
