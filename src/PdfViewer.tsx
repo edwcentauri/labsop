@@ -44,6 +44,7 @@ const MAX_SCALE = 3;
 const SCALE_STEP = .15;
 const DOUBLE_CLICK_SCALE = 2;
 const SWIPE_DISTANCE = 64;
+const POINTER_CAPTURE_DISTANCE = 8;
 const SCROLL_RENDER_RADIUS = 1;
 const DEFAULT_PAGE_RATIO = Math.SQRT2;
 const RENDER_PIXEL_RATIO = typeof window === 'undefined'
@@ -216,6 +217,36 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
     documentElement.style.removeProperty('transform-origin');
   };
 
+  const capturePointer = (frame: HTMLDivElement, pointerId: number) => {
+    try {
+      if (!frame.hasPointerCapture(pointerId)) frame.setPointerCapture(pointerId);
+    } catch {
+      // Safari can throw when a pointer ends between the event and capture call.
+    }
+  };
+
+  const clearGestureState = useCallback(() => {
+    const frame = frameRef.current;
+    const pointerIds = [...activePointers.current.keys()];
+    activePointers.current.clear();
+    panGesture.current = null;
+    pinchGesture.current = null;
+    lastTouchTap.current = null;
+    suppressSyntheticDoubleClickUntil.current = 0;
+    const documentElement = documentRef.current;
+    documentElement?.style.removeProperty('transform');
+    documentElement?.style.removeProperty('transform-origin');
+
+    if (!frame) return;
+    pointerIds.forEach((pointerId) => {
+      try {
+        if (frame.hasPointerCapture(pointerId)) frame.releasePointerCapture(pointerId);
+      } catch {
+        // The browser may have already released capture for this pointer.
+      }
+    });
+  }, []);
+
   const zoomAtPoint = (nextScale: number, midpointX: number, midpointY: number) => {
     const frame = frameRef.current;
     if (!frame || nextScale === scale) return;
@@ -250,6 +281,11 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
     if (event.pointerType !== 'touch') return;
     activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
+    if (activePointers.current.size > 2) {
+      activePointers.current.delete(event.pointerId);
+      return;
+    }
+
     if (activePointers.current.size === 1) {
       startPanWithPointer(event.pointerId, { x: event.clientX, y: event.clientY });
       return;
@@ -259,6 +295,7 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
       const frame = frameRef.current;
       const points = [...activePointers.current.values()];
       if (!frame) return;
+      activePointers.current.forEach((_, pointerId) => capturePointer(frame, pointerId));
       const frameRect = frame.getBoundingClientRect();
       const midpointX = (points[0].x + points[1].x) / 2 - frameRect.left;
       const midpointY = (points[0].y + points[1].y) / 2 - frameRect.top;
@@ -296,6 +333,9 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
 
     const pan = panGesture.current;
     if (!pan || pan.pointerId !== event.pointerId) return;
+    if (Math.hypot(event.clientX - pan.startX, event.clientY - pan.startY) > POINTER_CAPTURE_DISTANCE) {
+      capturePointer(frame, event.pointerId);
+    }
     frame.scrollLeft = pan.startScrollLeft - (event.clientX - pan.startX);
     frame.scrollTop = pan.startScrollTop - (event.clientY - pan.startY);
   };
@@ -359,12 +399,33 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
     panGesture.current = null;
   };
 
-  const cancelPointers = () => {
-    activePointers.current.clear();
-    panGesture.current = null;
-    pinchGesture.current = null;
-    resetPinchPreview();
+  const handlePointerLeave = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (
+      event.pointerType === 'touch'
+      && activePointers.current.has(event.pointerId)
+      && !event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      clearGestureState();
+    }
   };
+
+  const handleLostPointerCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch' && activePointers.current.has(event.pointerId)) {
+      clearGestureState();
+    }
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') clearGestureState();
+    };
+    window.addEventListener('blur', clearGestureState);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('blur', clearGestureState);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [clearGestureState]);
 
   const renderPage = (page: number) => {
     const pageRatio = pageRatios[page] ?? DEFAULT_PAGE_RATIO;
@@ -512,7 +573,9 @@ export default function PdfViewer({ file, fileName }: PdfViewerProps) {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={finishPointer}
-          onPointerCancel={cancelPointers}
+          onPointerCancel={clearGestureState}
+          onPointerLeave={handlePointerLeave}
+          onLostPointerCapture={handleLostPointerCapture}
         >
           <Document
             className={`pdf-document pdf-document-${viewMode}`}
