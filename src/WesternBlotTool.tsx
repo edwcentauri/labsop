@@ -29,7 +29,8 @@ import {
   createWesternBlotLaneLabels,
   groupWesternBlotPlateRepeats,
   resolveWesternBlotRepeatSourceIndex,
-  westernBlotMolecularWeightPosition,
+  westernBlotReferencedMolecularWeightPosition,
+  westernBlotReferencedPositionMolecularWeight,
   type WesternBlotGelThickness,
 } from './calculations';
 import {
@@ -306,7 +307,8 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
     if (!plot) return;
     const bounds = plot.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
-    onChangeCutLine(index, Math.round((1 - ratio) * maximumWeight));
+    const molecularWeight = westernBlotReferencedPositionMolecularWeight(ratio * 100, marker.bands);
+    if (molecularWeight !== null) onChangeCutLine(index, Math.round(molecularWeight));
   };
 
   return (
@@ -322,9 +324,8 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
         <div className="wb-marker-zone" style={{ width: `${markerWidth}%` }} aria-label={`${marker.name} ${marker.rangeLabel}`}>
           <span className="wb-marker-zone-title">Marker</span>
           {marker.bands.map((band) => {
-            const top = westernBlotMolecularWeightPosition(band.molecularWeight, maximumWeight) ?? 0;
             return (
-              <span className={`wb-marker-band ${band.color}`} style={{ top: `${top}%` }} key={band.molecularWeight}>
+              <span className={`wb-marker-band ${band.color}`} style={{ top: `${band.positionPercent}%` }} key={band.molecularWeight}>
                 <i />
                 <small>{band.molecularWeight}</small>
               </span>
@@ -335,7 +336,7 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
           {selectedProteins.map((protein) => {
             const molecularWeight = cleanNumber(protein.molecularWeight);
             if (molecularWeight === null) return null;
-            const top = westernBlotMolecularWeightPosition(molecularWeight, maximumWeight);
+            const top = westernBlotReferencedMolecularWeightPosition(molecularWeight, marker.bands);
             if (top === null) return null;
             return (
               <span className="wb-protein-band" style={{ top: `${top}%` }} key={protein.id}>
@@ -347,7 +348,7 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
         </div>
         {plate.cutLines.map((line, index) => {
           const safeLine = Math.min(maximumWeight, Math.max(0, line));
-          const top = westernBlotMolecularWeightPosition(safeLine, maximumWeight) ?? 50;
+          const top = westernBlotReferencedMolecularWeightPosition(safeLine, marker.bands) ?? 50;
           if (readOnly) {
             return <div className="wb-cut-line readonly" style={{ top: `${top}%` }} key={`cut-${index}`}><span>切膜线</span></div>;
           }
@@ -941,7 +942,7 @@ export default function WesternBlotTool() {
           </div>
 
           <div className="wb-setup-section wb-design-section">
-            <div className="setup-card-title"><span>胶板设计器</span><small>膜图高度按当前 Marker 的 0 kDa 至上限线性显示</small></div>
+            <div className="setup-card-title"><span>胶板设计器</span><small>膜图纵向位置按当前 Marker 参照图标定</small></div>
             {activePlates.length ? activePlates.map((plate) => (
               <article className="wb-plate-card" key={plate.number}>
                 <header><div><span>PLATE {plate.number}</span><h3>第 {plate.number} 板</h3></div>{plate.number > 1 && !(plate.number === 4 && session.plates[2].repeated) && <label className="wb-repeat-toggle"><input type="checkbox" checked={plate.repeated} onChange={(event) => updateRepeatedPlate(plate.number, event.target.checked)} /><span>重复板（重复第 {plate.number - 1} 板）</span></label>}</header>

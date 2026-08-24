@@ -2,6 +2,7 @@ export type WesternBlotMarkerId = 'yseasy-10-250' | 'thermo-40-300';
 
 export type WesternBlotMarkerBand = {
   molecularWeight: number;
+  positionPercent: number;
   color: 'blue' | 'green' | 'red' | 'orange';
 };
 
@@ -17,8 +18,21 @@ export const westernBlotMarkers: WesternBlotMarker[] = [
     id: 'yseasy-10-250',
     name: '雅酶',
     rangeLabel: '10–250 kDa',
-    bands: [10, 15, 20, 25, 35, 40, 50, 70, 100, 150, 250].map((molecularWeight): WesternBlotMarkerBand => ({
+    bands: [
+      [10, 94.5],
+      [15, 85.7],
+      [20, 75.7],
+      [25, 67.6],
+      [35, 57.9],
+      [40, 50.7],
+      [50, 37.6],
+      [70, 28.6],
+      [100, 20.5],
+      [150, 12.4],
+      [250, 4.3],
+    ].map(([molecularWeight, positionPercent]): WesternBlotMarkerBand => ({
       molecularWeight,
+      positionPercent,
       color: molecularWeight === 25 ? 'green' : molecularWeight === 70 ? 'red' : 'blue',
     })),
   },
@@ -26,8 +40,18 @@ export const westernBlotMarkers: WesternBlotMarker[] = [
     id: 'thermo-40-300',
     name: '赛默飞',
     rangeLabel: '40–300 kDa',
-    bands: [40, 50, 70, 100, 130, 180, 250, 300].map((molecularWeight): WesternBlotMarkerBand => ({
+    bands: [
+      [40, 95],
+      [50, 78.8],
+      [70, 55],
+      [100, 41.7],
+      [130, 27.4],
+      [180, 16.9],
+      [250, 9.8],
+      [300, 4],
+    ].map(([molecularWeight, positionPercent]): WesternBlotMarkerBand => ({
       molecularWeight,
+      positionPercent,
       color: molecularWeight === 50 ? 'green' : molecularWeight === 70 || molecularWeight === 300 ? 'orange' : 'blue',
     })),
   },
