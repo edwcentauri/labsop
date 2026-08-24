@@ -327,6 +327,8 @@ export function calculateTubeDistribution(
 export type WesternBlotGelThickness = 0.75 | 1 | 1.5;
 
 export type WesternBlotLysisRecipe = {
+  perTubeVolume: number;
+  excessTubeCount: number;
   tissueVolume: number;
   excessVolume: number;
   totalVolume: number;
@@ -337,23 +339,30 @@ export type WesternBlotLysisRecipe = {
 
 export function calculateWesternBlotLysisRecipe(
   sampleCount: number,
-  excessVolume: number,
+  perTubeVolume: number,
+  excessTubeCount: number,
 ): WesternBlotLysisRecipe | null {
   if (
     !Number.isInteger(sampleCount)
     || sampleCount <= 0
-    || !Number.isFinite(excessVolume)
-    || excessVolume < 0
+    || !Number.isFinite(perTubeVolume)
+    || perTubeVolume <= 0
+    || !Number.isFinite(excessTubeCount)
+    || excessTubeCount < 0
+    || !Number.isInteger(excessTubeCount * 2)
   ) {
     return null;
   }
 
-  const tissueVolume = sampleCount * 400;
+  const tissueVolume = sampleCount * perTubeVolume;
+  const excessVolume = excessTubeCount * perTubeVolume;
   const totalVolume = tissueVolume + excessVolume;
   const proteaseInhibitor = totalVolume / 50;
   const phosphataseInhibitor = totalVolume / 50;
 
   return {
+    perTubeVolume,
+    excessTubeCount,
     tissueVolume,
     excessVolume,
     totalVolume,

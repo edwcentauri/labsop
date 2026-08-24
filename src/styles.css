@@ -1000,7 +1000,16 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-inline-options { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 11px 0 7px; padding: 10px; border-radius: 9px; background: #f5f8f7; }
 .wb-inline-options label { display: inline-flex; align-items: center; gap: 6px; color: #4f6863; font-size: 10px; font-weight: 700; }
 .wb-inline-options input { accent-color: #6f5cad; }
-.wb-inline-options select { min-height: 32px; padding: 0 28px 0 8px; border: 1px solid #cfddd9; border-radius: 8px; color: #29443f; background: white; font: inherit; font-size: 10px; }
+.wb-lysis-volume .wb-inline-number { width: 110px; min-height: 34px; }
+.wb-lysis-volume .wb-inline-number input { height: 32px; }
+.wb-decimal-stepper { display: inline-flex; align-items: center; gap: 6px; color: #4f6863; font-size: 10px; font-weight: 700; }
+.wb-decimal-stepper > b { color: #72847f; font-size: 10px; }
+.wb-decimal-stepper-control { display: grid; grid-template-columns: 30px 58px 30px; overflow: hidden; border: 1px solid #cfddd9; border-radius: 8px; background: white; }
+.wb-decimal-stepper-control button { display: grid; place-items: center; width: 30px; height: 32px; border: 0; color: #65549e; background: #eeeafb; cursor: pointer; }
+.wb-decimal-stepper-control button:hover:not(:disabled) { background: #e1daf7; }
+.wb-decimal-stepper-control button:disabled { color: #adb5b3; background: #f2f5f4; cursor: not-allowed; }
+.wb-decimal-stepper-control input { width: 58px; height: 32px; padding: 0 4px; border: 0; outline: 0; color: #29443f; background: white; font: inherit; font-size: 11px; font-weight: 750; text-align: center; }
+.wb-decimal-stepper-control:focus-within { border-color: #6f5cad; box-shadow: 0 0 0 3px #6f5cad13; }
 .wb-pour-table { margin-top: 10px; overflow: hidden; border: 1px solid #dce6e3; border-radius: 10px; }
 .wb-pour-table > div { display: grid; grid-template-columns: .7fr 1fr 1fr; }
 .wb-pour-table > div + div { border-top: 1px solid #e5ecea; }
@@ -1119,7 +1128,11 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .wb-pour-table > div:first-child,
 [data-theme='dark'] .wb-guide-diagrams > article,
 [data-theme='dark'] .wb-cut-visibility { border-color: #30433f; background: #101b19; }
-[data-theme='dark'] .wb-inline-options select { color: #d8e6e2; border-color: #36504a; background: #12211e; }
+[data-theme='dark'] .wb-decimal-stepper-control,
+[data-theme='dark'] .wb-decimal-stepper-control input { color: #d8e6e2; border-color: #36504a; background: #12211e; }
+[data-theme='dark'] .wb-decimal-stepper-control button { color: #c5b6ef; background: #30294a; }
+[data-theme='dark'] .wb-decimal-stepper-control button:hover:not(:disabled) { background: #3c3458; }
+[data-theme='dark'] .wb-decimal-stepper-control button:disabled { color: #626d6a; background: #17221f; }
 [data-theme='dark'] .wb-pour-table,
 [data-theme='dark'] .wb-pour-table > div + div { border-color: #30433f; }
 [data-theme='dark'] .wb-pour-table > div > * { color: #aebfbb; }
