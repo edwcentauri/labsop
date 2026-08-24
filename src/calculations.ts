@@ -519,6 +519,61 @@ export function westernBlotMolecularWeightPosition(
   return 100 - (molecularWeight / maximumMarkerWeight) * 100;
 }
 
+type WesternBlotMarkerPositionReference = {
+  molecularWeight: number;
+  positionPercent: number;
+};
+
+function validWesternBlotMarkerPositions(
+  references: WesternBlotMarkerPositionReference[],
+): WesternBlotMarkerPositionReference[] | null {
+  if (references.length === 0) return null;
+  const sorted = [...references].sort((left, right) => left.molecularWeight - right.molecularWeight);
+  const isValid = sorted.every((reference, index) => (
+    Number.isFinite(reference.molecularWeight)
+    && Number.isFinite(reference.positionPercent)
+    && reference.molecularWeight > 0
+    && reference.positionPercent >= 0
+    && reference.positionPercent <= 100
+    && (index === 0 || reference.molecularWeight > sorted[index - 1].molecularWeight)
+    && (index === 0 || reference.positionPercent < sorted[index - 1].positionPercent)
+  ));
+  return isValid ? sorted : null;
+}
+
+export function westernBlotReferencedMolecularWeightPosition(
+  molecularWeight: number,
+  references: WesternBlotMarkerPositionReference[],
+): number | null {
+  const sorted = validWesternBlotMarkerPositions(references);
+  if (!Number.isFinite(molecularWeight) || molecularWeight < 0 || !sorted) return null;
+  const anchors = [{ molecularWeight: 0, positionPercent: 100 }, ...sorted];
+  if (molecularWeight > anchors[anchors.length - 1].molecularWeight) return null;
+  const upperIndex = anchors.findIndex((anchor) => anchor.molecularWeight >= molecularWeight);
+  const upper = anchors[upperIndex];
+  if (upper.molecularWeight === molecularWeight) return upper.positionPercent;
+  const lower = anchors[upperIndex - 1];
+  const ratio = (molecularWeight - lower.molecularWeight) / (upper.molecularWeight - lower.molecularWeight);
+  return lower.positionPercent + ratio * (upper.positionPercent - lower.positionPercent);
+}
+
+export function westernBlotReferencedPositionMolecularWeight(
+  positionPercent: number,
+  references: WesternBlotMarkerPositionReference[],
+): number | null {
+  const sorted = validWesternBlotMarkerPositions(references);
+  if (!Number.isFinite(positionPercent) || positionPercent < 0 || positionPercent > 100 || !sorted) return null;
+  const anchors = [{ molecularWeight: 0, positionPercent: 100 }, ...sorted];
+  const maximum = anchors[anchors.length - 1];
+  if (positionPercent <= maximum.positionPercent) return maximum.molecularWeight;
+  const upperIndex = anchors.findIndex((anchor) => anchor.positionPercent <= positionPercent);
+  const upper = anchors[upperIndex];
+  if (upper.positionPercent === positionPercent) return upper.molecularWeight;
+  const lower = anchors[upperIndex - 1];
+  const ratio = (positionPercent - lower.positionPercent) / (upper.positionPercent - lower.positionPercent);
+  return lower.molecularWeight + ratio * (upper.molecularWeight - lower.molecularWeight);
+}
+
 export function resolveWesternBlotRepeatSourceIndex(
   plateIndex: number,
   repeatedPlates: boolean[],

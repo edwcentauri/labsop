@@ -13,6 +13,8 @@ import {
   resolveWesternBlotRepeatSourceIndex,
   summarizeQpcrPlateUsage,
   westernBlotMolecularWeightPosition,
+  westernBlotReferencedMolecularWeightPosition,
+  westernBlotReferencedPositionMolecularWeight,
 } from './calculations';
 
 describe('calculateRnaLoadingBatch', () => {
@@ -215,6 +217,21 @@ describe('Western blot calculations', () => {
     expect(westernBlotMolecularWeightPosition(150, 300)).toBe(50);
     expect(westernBlotMolecularWeightPosition(0, 300)).toBe(100);
     expect(westernBlotMolecularWeightPosition(301, 300)).toBeNull();
+  });
+
+  it('maps molecular weights and cut lines against marker reference spacing', () => {
+    const references = [
+      { molecularWeight: 40, positionPercent: 95 },
+      { molecularWeight: 50, positionPercent: 78.8 },
+      { molecularWeight: 70, positionPercent: 55 },
+    ];
+    expect(westernBlotReferencedMolecularWeightPosition(50, references)).toBe(78.8);
+    expect(westernBlotReferencedMolecularWeightPosition(60, references)).toBeCloseTo(66.9);
+    expect(westernBlotReferencedPositionMolecularWeight(55, references)).toBe(70);
+    expect(westernBlotReferencedPositionMolecularWeight(66.9, references)).toBeCloseTo(60);
+    expect(westernBlotReferencedMolecularWeightPosition(71, references)).toBeNull();
+    expect(westernBlotReferencedMolecularWeightPosition(-1, references)).toBeNull();
+    expect(westernBlotReferencedPositionMolecularWeight(101, references)).toBeNull();
   });
 
   it('resolves chained repeat plates to their nearest independent source', () => {
