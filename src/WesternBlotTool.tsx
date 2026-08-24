@@ -128,7 +128,7 @@ function createDefaultSession(): WesternBlotSession {
     voltage: '250',
     transferCurrent: '400',
     proteins: DEFAULT_PROTEINS.map((protein) => ({ ...protein })),
-    plates: [createPlate(1, false), createPlate(2, true), createPlate(3, false), createPlate(4, true)],
+    plates: [createPlate(1, false), createPlate(2, true), createPlate(3, true), createPlate(4, true)],
     notes: {},
     completed: {},
   };
@@ -223,10 +223,6 @@ function loadSession(): WesternBlotSession {
         cutLines,
       };
     });
-    const normalizedPlates = plates.map((plate) => plate.number === 4 && plates[2].repeated
-      ? { ...plate, repeated: true }
-      : plate);
-
     return {
       plateCount: parsed.plateCount === 2 || parsed.plateCount === 4 ? parsed.plateCount : '',
       thickness: parsed.thickness === 0.75 || parsed.thickness === 1 || parsed.thickness === 1.5 ? parsed.thickness : '',
@@ -242,7 +238,7 @@ function loadSession(): WesternBlotSession {
       voltage: stringValue(parsed.voltage, '250'),
       transferCurrent: stringValue(parsed.transferCurrent, '400'),
       proteins: safeProteins,
-      plates: normalizedPlates,
+      plates,
       notes: stringRecord(parsed.notes),
       completed: booleanRecord(parsed.completed),
     };
@@ -425,7 +421,7 @@ function PlateDesigner({ plate, sourcePlateNumber, proteins, sampleNames, firstM
   const maximumWeight = marker ? Math.max(...marker.bands.map(({ molecularWeight }) => molecularWeight)) : 0;
 
   if (plate.repeated && sourcePlateNumber) {
-    return <div className="wb-repeat-summary"><LayoutGrid size={18} /><span>第 {plate.number} 板重复第 {sourcePlateNumber} 板，设计器已隐藏。</span></div>;
+    return <div className="wb-repeat-summary"><LayoutGrid size={18} /><span>第 {plate.number} 板自动同步第 {sourcePlateNumber} 板，设计器已隐藏。</span></div>;
   }
 
   return (
@@ -561,14 +557,24 @@ export default function WesternBlotTool() {
   };
 
   const updateRepeatedPlate = (number: number, repeated: boolean) => {
-    setSession((current) => ({
-      ...current,
-      plates: current.plates.map((plate) => {
-        if (plate.number === number) return { ...plate, repeated };
-        if (number === 3 && repeated && plate.number === 4) return { ...plate, repeated: true };
-        return plate;
-      }),
-    }));
+    setSession((current) => {
+      const source = current.plates[0];
+      return {
+        ...current,
+        plates: current.plates.map((plate) => {
+          if (plate.number !== number) return plate;
+          if (repeated) return { ...plate, repeated: true };
+          return {
+            ...plate,
+            repeated: false,
+            wellCount: source.wellCount,
+            markerId: source.markerId,
+            selectedProteinIds: [...source.selectedProteinIds],
+            laneLabels: [...source.laneLabels],
+          };
+        }),
+      };
+    });
   };
 
   const rebuildLaneLabels = (current: WesternBlotSession, sampleNames: string[], firstVolume = current.firstMarkerVolume, lastVolume = current.lastMarkerVolume) => current.plates.map((plate) => ({
@@ -713,7 +719,7 @@ export default function WesternBlotTool() {
                   <div className="wb-cut-plan-header">
                     <div className="wb-diagram-plate-pills">
                       <span>胶板 {plate.number}</span>
-                      {plate.repeated && <span>布局重复胶板 {plate.number - 1}</span>}
+                      {plate.repeated && <span>布局同步胶板 1</span>}
                     </div>
                     <button
                       type="button"
@@ -945,10 +951,10 @@ export default function WesternBlotTool() {
             <div className="setup-card-title"><span>胶板设计器</span><small>膜图纵向位置按当前 Marker 参照图标定</small></div>
             {activePlates.length ? activePlates.map((plate) => (
               <article className="wb-plate-card" key={plate.number}>
-                <header><div><span>PLATE {plate.number}</span><h3>第 {plate.number} 板</h3></div>{plate.number > 1 && !(plate.number === 4 && session.plates[2].repeated) && <label className="wb-repeat-toggle"><input type="checkbox" checked={plate.repeated} onChange={(event) => updateRepeatedPlate(plate.number, event.target.checked)} /><span>重复板（重复第 {plate.number - 1} 板）</span></label>}</header>
+                <header><div><span>PLATE {plate.number}</span><h3>第 {plate.number} 板</h3></div>{plate.number > 1 && <label className="wb-repeat-toggle"><input type="checkbox" checked={plate.repeated} onChange={(event) => updateRepeatedPlate(plate.number, event.target.checked)} /><span>重复板（同步第 1 板）</span></label>}</header>
                 <PlateDesigner
                   plate={plate}
-                  sourcePlateNumber={plate.number > 1 ? plate.number - 1 : undefined}
+                  sourcePlateNumber={plate.number > 1 ? 1 : undefined}
                   proteins={session.proteins}
                   sampleNames={session.sampleNames}
                   firstMarkerVolume={session.firstMarkerVolume}

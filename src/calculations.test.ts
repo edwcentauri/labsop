@@ -234,9 +234,13 @@ describe('Western blot calculations', () => {
     expect(westernBlotReferencedPositionMolecularWeight(101, references)).toBeNull();
   });
 
-  it('resolves chained repeat plates to their nearest independent source', () => {
+  it('resolves every repeated plate directly to the first plate', () => {
+    expect(resolveWesternBlotRepeatSourceIndex(0, [false, true, true, true])).toBe(0);
     expect(resolveWesternBlotRepeatSourceIndex(3, [false, true, true, true])).toBe(0);
-    expect(resolveWesternBlotRepeatSourceIndex(3, [false, true, false, true])).toBe(2);
+    expect(resolveWesternBlotRepeatSourceIndex(3, [false, true, false, true])).toBe(0);
+    expect(resolveWesternBlotRepeatSourceIndex(2, [false, true, false, true])).toBe(2);
+    expect(resolveWesternBlotRepeatSourceIndex(-1, [false, true, false, true])).toBeNull();
+    expect(resolveWesternBlotRepeatSourceIndex(1.5, [false, true, false, true])).toBeNull();
     expect(resolveWesternBlotRepeatSourceIndex(4, [false, true, false, true])).toBeNull();
   });
 
@@ -248,8 +252,8 @@ describe('Western blot calculations', () => {
       { sourceIndex: 0, plateIndices: [0, 1, 2, 3] },
     ]);
     expect(groupWesternBlotPlateRepeats([false, true, false, true])).toEqual([
-      { sourceIndex: 0, plateIndices: [0, 1] },
-      { sourceIndex: 2, plateIndices: [2, 3] },
+      { sourceIndex: 0, plateIndices: [0, 1, 3] },
+      { sourceIndex: 2, plateIndices: [2] },
     ]);
   });
 });
