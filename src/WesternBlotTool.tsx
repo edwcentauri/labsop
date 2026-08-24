@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleAlert,
   ClipboardCheck,
+  ExternalLink,
   FlaskConical,
   GripHorizontal,
   LayoutGrid,
@@ -71,6 +72,7 @@ type WesternBlotSession = {
   sampleCount: string;
   sampleNames: string[];
   loadingVolume: string;
+  denaturationVolume: string;
   firstMarkerVolume: string;
   lastMarkerVolume: string;
   addLysisExcess: boolean;
@@ -83,8 +85,8 @@ type WesternBlotSession = {
   completed: Record<string, boolean>;
 };
 
-const STORAGE_KEY = 'labsop:western-blot-session:v2';
-const LEGACY_STORAGE_KEY = 'labsop:western-blot-session:v1';
+const STORAGE_KEY = 'labsop:western-blot-session:v3';
+const LEGACY_STORAGE_KEYS = ['labsop:western-blot-session:v2', 'labsop:western-blot-session:v1'];
 const DEFAULT_PROTEINS: ProteinInput[] = [
   { id: 'target-1', role: 'target', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' },
   { id: 'reference-1', role: 'reference', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' },
@@ -116,7 +118,8 @@ function createDefaultSession(): WesternBlotSession {
     gelPercentage: '',
     sampleCount: '',
     sampleNames,
-    loadingVolume: '',
+    loadingVolume: '10',
+    denaturationVolume: '300',
     firstMarkerVolume: '5',
     lastMarkerVolume: '3',
     addLysisExcess: false,
@@ -157,7 +160,8 @@ function booleanRecord(value: unknown): Record<string, boolean> {
 function loadSession(): WesternBlotSession {
   const fallback = createDefaultSession();
   try {
-    const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY)
+      ?? LEGACY_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find((value) => value !== null);
     if (!saved) return fallback;
     const parsed: unknown = JSON.parse(saved);
     if (!isRecord(parsed)) return fallback;
@@ -181,7 +185,10 @@ function loadSession(): WesternBlotSession {
         }];
       })
       : [];
-    const safeProteins = proteins.length >= 2 ? proteins : fallback.proteins;
+    const safeProteins = [...(proteins.length >= 2 ? proteins : fallback.proteins)].sort((left, right) => {
+      if (left.role === right.role) return 0;
+      return left.role === 'reference' ? 1 : -1;
+    });
     const allowedProteinIds = new Set(safeProteins.map(({ id }) => id));
     const sampleNames = Array.isArray(parsed.sampleNames)
       ? parsed.sampleNames.filter((value): value is string => typeof value === 'string').slice(0, 28)
@@ -225,7 +232,8 @@ function loadSession(): WesternBlotSession {
       gelPercentage: parsed.gelPercentage === '6' || parsed.gelPercentage === '8' || parsed.gelPercentage === '10' || parsed.gelPercentage === '12.5' ? parsed.gelPercentage : '',
       sampleCount: stringValue(parsed.sampleCount, ''),
       sampleNames,
-      loadingVolume: stringValue(parsed.loadingVolume, ''),
+      loadingVolume: stringValue(parsed.loadingVolume, '10'),
+      denaturationVolume: stringValue(parsed.denaturationVolume, '300'),
       firstMarkerVolume: stringValue(parsed.firstMarkerVolume, '5'),
       lastMarkerVolume: stringValue(parsed.lastMarkerVolume, '3'),
       addLysisExcess: parsed.addLysisExcess === true,
@@ -463,7 +471,6 @@ function PlateDesigner({ plate, sourcePlateNumber, proteins, sampleNames, firstM
             ))}
           </div>
         </fieldset>
-        <button type="button" className="wb-add-cut" disabled={!maximumWeight} onClick={() => onChange((current) => ({ ...current, cutLines: [...current.cutLines, Math.round(maximumWeight / 2)] }))}><Plus size={15} />添加切膜线</button>
       </div>
       {maximumWeight > 0 && proteins.some((protein) => plate.selectedProteinIds.includes(protein.id) && (cleanNumber(protein.molecularWeight) ?? 0) > maximumWeight) && (
         <div className="wb-inline-error"><CircleAlert size={15} />所选蛋白中有分子量超出当前 Marker 上限的项目，请更换 Marker 或修改蛋白选择。</div>
@@ -474,10 +481,11 @@ function PlateDesigner({ plate, sourcePlateNumber, proteins, sampleNames, firstM
         ))}
       </div> : <div className="wb-designer-placeholder">选择孔数后生成孔名行。</div>}
       {plate.wellCount && plate.markerId ? <MarkerPlot
-        plate={plate as ConfiguredPlateDesign}
+        plate={{ ...plate, cutLines: [] } as ConfiguredPlateDesign}
         proteins={proteins}
-        onChangeCutLine={(index, value) => onChange((current) => ({ ...current, cutLines: current.cutLines.map((line, lineIndex) => lineIndex === index ? value : line) }))}
-        onDeleteCutLine={(index) => onChange((current) => ({ ...current, cutLines: current.cutLines.filter((_, lineIndex) => lineIndex !== index) }))}
+        readOnly
+        onChangeCutLine={() => undefined}
+        onDeleteCutLine={() => undefined}
       /> : <div className="wb-designer-placeholder">选择孔数和 Marker 后显示膜图。</div>}
     </div>
   );
@@ -486,6 +494,7 @@ function PlateDesigner({ plate, sourcePlateNumber, proteins, sampleNames, firstM
 export default function WesternBlotTool() {
   const [tab, setTab] = useState<ToolTab>('setup');
   const [guidePage, setGuidePage] = useState(0);
+  const [visibleCutPlateNumbers, setVisibleCutPlateNumbers] = useState<number[]>([1, 2, 3, 4]);
   const [session, setSession] = useState<WesternBlotSession>(loadSession);
 
   const sampleCount = cleanNumber(session.sampleCount);
@@ -505,7 +514,10 @@ export default function WesternBlotTool() {
   const lysisRecipe = validSampleCount !== null
     ? calculateWesternBlotLysisRecipe(validSampleCount, lysisExcessVolume)
     : null;
-  const denaturationRecipe = validSampleCount !== null ? calculateWesternBlotDenaturationRecipe(validSampleCount) : null;
+  const denaturationVolume = cleanNumber(session.denaturationVolume);
+  const denaturationRecipe = denaturationVolume === null
+    ? null
+    : calculateWesternBlotDenaturationRecipe(denaturationVolume);
   const gelRecipe = session.plateCount && session.thickness
     ? calculateWesternBlotGelRecipe(session.plateCount, session.thickness)
     : null;
@@ -602,9 +614,10 @@ export default function WesternBlotTool() {
   const addProtein = () => {
     setSession((current) => {
       const id = `target-${Date.now()}`;
+      const target: ProteinInput = { id, role: 'target', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' };
       return {
         ...current,
-        proteins: [...current.proteins, { id, role: 'target', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' }],
+        proteins: [target, ...current.proteins],
         plates: current.plates.map((plate) => ({ ...plate, selectedProteinIds: [...plate.selectedProteinIds, id] })),
       };
     });
@@ -620,11 +633,12 @@ export default function WesternBlotTool() {
 
   const resetSession = () => {
     setSession(createDefaultSession());
+    setVisibleCutPlateNumbers([1, 2, 3, 4]);
     setGuidePage(0);
     setTab('setup');
   };
 
-  const renderPlateDiagrams = (includeCutLines: boolean, showRightCutLine = false) => {
+  const renderPlateDiagrams = () => {
     const plateGroups = groupWesternBlotPlateRepeats(activePlates.map(({ repeated }) => repeated));
     return (
       <div className="wb-guide-diagrams">
@@ -637,7 +651,7 @@ export default function WesternBlotTool() {
             number: plateNumbers[0],
             wellCount: source.wellCount,
             markerId: source.markerId,
-            cutLines: includeCutLines ? source.cutLines : [],
+            cutLines: [],
           };
           return (
             <article key={group.sourceIndex}>
@@ -648,7 +662,6 @@ export default function WesternBlotTool() {
                 plate={diagram}
                 proteins={session.proteins}
                 readOnly
-                showRightCutLine={showRightCutLine}
                 onChangeCutLine={() => undefined}
                 onDeleteCutLine={() => undefined}
               />
@@ -656,6 +669,82 @@ export default function WesternBlotTool() {
           );
         })}
       </div>
+    );
+  };
+
+  const renderCuttingPlan = () => {
+    const visiblePlates = activePlates.filter(({ number }) => visibleCutPlateNumbers.includes(number));
+    return (
+      <>
+        <fieldset className="wb-cut-visibility">
+          <legend>显示 / 隐藏胶板</legend>
+          {activePlates.map((plate) => (
+            <label key={plate.number}>
+              <input
+                type="checkbox"
+                checked={visibleCutPlateNumbers.includes(plate.number)}
+                onChange={(event) => setVisibleCutPlateNumbers((current) => event.target.checked
+                  ? [...current, plate.number]
+                  : current.filter((number) => number !== plate.number))}
+              />
+              <span>胶板 {plate.number}</span>
+            </label>
+          ))}
+        </fieldset>
+        {visiblePlates.length > 0 ? (
+          <div className="wb-guide-diagrams wb-cutting-plans">
+            {visiblePlates.map((plate) => {
+              const source = effectivePlate(plate);
+              if (!source.wellCount || !source.markerId) return null;
+              const marker = westernBlotMarkers.find(({ id }) => id === source.markerId);
+              const maximumWeight = marker
+                ? Math.max(...marker.bands.map(({ molecularWeight }) => molecularWeight))
+                : 0;
+              const diagram: ConfiguredPlateDesign = {
+                ...source,
+                number: plate.number,
+                wellCount: source.wellCount,
+                markerId: source.markerId,
+                cutLines: plate.cutLines,
+              };
+              return (
+                <article key={plate.number}>
+                  <div className="wb-cut-plan-header">
+                    <div className="wb-diagram-plate-pills">
+                      <span>胶板 {plate.number}</span>
+                      {plate.repeated && <span>布局重复胶板 {plate.number - 1}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      className="wb-add-cut"
+                      disabled={!maximumWeight}
+                      onClick={() => updatePlate(plate.number, (current) => ({
+                        ...current,
+                        cutLines: [...current.cutLines, Math.round(maximumWeight / 2)],
+                      }))}
+                    >
+                      <Plus size={15} />添加切膜线
+                    </button>
+                  </div>
+                  <MarkerPlot
+                    plate={diagram}
+                    proteins={session.proteins}
+                    showRightCutLine
+                    onChangeCutLine={(index, value) => updatePlate(plate.number, (current) => ({
+                      ...current,
+                      cutLines: current.cutLines.map((line, lineIndex) => lineIndex === index ? value : line),
+                    }))}
+                    onDeleteCutLine={(index) => updatePlate(plate.number, (current) => ({
+                      ...current,
+                      cutLines: current.cutLines.filter((_, lineIndex) => lineIndex !== index),
+                    }))}
+                  />
+                </article>
+              );
+            })}
+          </div>
+        ) : <div className="wb-designer-placeholder">勾选需要显示并设计切膜方案的胶板。</div>}
+      </>
     );
   };
 
@@ -675,8 +764,47 @@ export default function WesternBlotTool() {
     }
     if (item.kind === 'denaturation-recipe') {
       return denaturationRecipe ? (
-        <div className="wb-recipe-card"><strong>每管取总体积 300 μl，换到 1.5 ml 离心管</strong><p>5× Loading buffer 60 μl（总体积 ÷ 5）+ 蛋白液 240 μl。</p><dl><div><dt>{validSampleCount} 管 Loading buffer 合计</dt><dd>{formatQuantity(denaturationRecipe.batch.loadingBuffer)} μl</dd></div><div><dt>{validSampleCount} 管蛋白液合计</dt><dd>{formatQuantity(denaturationRecipe.batch.protein)} μl</dd></div></dl></div>
-      ) : <div className="wb-inline-error"><CircleAlert size={16} />返回初始化填写本次测样数。</div>;
+        <div className="wb-recipe-card">
+          <div className="wb-denaturation-heading">
+            <strong>每管取总体积</strong>
+            <span className="wb-inline-number">
+              <input
+                type="number"
+                min={0}
+                step={100}
+                value={session.denaturationVolume}
+                aria-label="每管总体积"
+                onChange={(event) => setSession((current) => ({ ...current, denaturationVolume: event.target.value }))}
+              />
+              <b>μl</b>
+            </span>
+            <strong>，换到 1.5 ml 离心管</strong>
+          </div>
+          <dl aria-label="单管变性配方">
+            <div><dt>5× Loading buffer</dt><dd>{formatQuantity(denaturationRecipe.perTube.loadingBuffer)} μl</dd></div>
+            <div><dt>蛋白液</dt><dd>{formatQuantity(denaturationRecipe.perTube.protein)} μl</dd></div>
+          </dl>
+        </div>
+      ) : (
+        <div className="wb-recipe-card">
+          <div className="wb-denaturation-heading">
+            <strong>每管取总体积</strong>
+            <span className="wb-inline-number">
+              <input
+                type="number"
+                min={0}
+                step={100}
+                value={session.denaturationVolume}
+                aria-label="每管总体积"
+                onChange={(event) => setSession((current) => ({ ...current, denaturationVolume: event.target.value }))}
+              />
+              <b>μl</b>
+            </span>
+            <strong>，换到 1.5 ml 离心管</strong>
+          </div>
+          <div className="wb-inline-error"><CircleAlert size={16} />每管总体积须大于 0 μl。</div>
+        </div>
+      );
     }
     if (item.kind === 'gel-setup') return <p>取 <b>{session.thickness ? formatQuantity(session.thickness) : '未选择'} mm</b> 大板和对应小板，共 <b>{batchPlateCount} 板</b>，组装在夹子里，注入纯水验证是否漏液，至少 5 min。</p>;
     if (item.kind === 'gel-kit') return <p>找到 <b>{session.gelPercentage || '未选择'}% 快胶盒</b>，在小塑料杯里按照说明书配胶。凝胶浓度仅决定快胶盒选择，不改变下方试剂量。</p>;
@@ -712,7 +840,7 @@ export default function WesternBlotTool() {
         <p>以当前填写电压运行，跑至最大 Marker 离开上层胶且最小 Marker 到底、各小 Marker 充分分散，约 25 min。</p>
       </div>
     );
-    if (item.kind === 'electrophoresis-layout') return <div><p>按照下方胶板设计图上样：</p>{renderPlateDiagrams(false)}</div>;
+    if (item.kind === 'electrophoresis-layout') return <div><p>按照下方胶板设计图上样：</p>{renderPlateDiagrams()}</div>;
     if (item.kind === 'transfer-setup') return <p>取 <b>{batchPlateCount} 个夹板</b>放在灌转膜液的水槽里浸透水，取 <b>{batchPlateCount} 个 PVDF 膜</b>用无水乙醇激活。</p>;
     if (item.kind === 'transfer-run') return (
       <div className="wb-recipe-card wb-step-parameter">
@@ -721,10 +849,18 @@ export default function WesternBlotTool() {
       </div>
     );
     if (item.kind === 'primary-antibody') return (
-      <div className="wb-recipe-card"><strong>按本批次膜图切膜并孵育一抗</strong>{renderPlateDiagrams(true, true)}<p>根据图纸切膜，剪左上角标记，加 3 ml 稀释后的一抗，4℃ 冰箱慢摇过夜。</p><dl className="wb-antibody-list">{session.proteins.map((protein) => <div key={protein.id}><dt>{protein.name || '未命名蛋白'}</dt><dd>一抗浓度：{protein.primaryDilution || '未填写'}</dd></div>)}</dl></div>
+      <div className="wb-recipe-card"><strong>按本批次膜图切膜并孵育一抗</strong>{renderCuttingPlan()}<p>根据图纸切膜，剪左上角标记，加 3 ml 稀释后的一抗，4℃ 冰箱慢摇过夜。</p><dl className="wb-antibody-list">{session.proteins.map((protein) => <div key={protein.id}><dt>{protein.name || '未命名蛋白'}</dt><dd>一抗浓度：{protein.primaryDilution || '未填写'}</dd></div>)}</dl></div>
     );
     if (item.kind === 'secondary-antibody') return (
       <div className="wb-recipe-card"><strong>按蛋白分别选择二抗孵育</strong><dl className="wb-antibody-list">{session.proteins.map((protein) => <div key={protein.id}><dt>{protein.name || '未命名蛋白'}：</dt><dd>{protein.secondaryAntibody || '未选择'}</dd></div>)}</dl><p>各膜加入 3 ml 对应的稀释后二抗，慢摇 1 h。</p></div>
+    );
+    if (item.kind === 'exposure') return (
+      <div className="wb-exposure-step">
+        <p>{item.text}</p>
+        <a href={item.href} target="_blank" rel="noopener noreferrer">
+          点击预约曝光仪<ExternalLink size={15} />
+        </a>
+      </div>
     );
     return <p>{item.text}</p>;
   };
@@ -791,6 +927,7 @@ export default function WesternBlotTool() {
 
           <div className="wb-setup-section">
             <div className="setup-card-title"><span>目标蛋白、内参与抗体</span><small>每个蛋白分别设置浓度与二抗</small></div>
+            <button type="button" className="add-row-button wb-protein-add" onClick={addProtein}><Plus size={16} />添加目标蛋白</button>
             <div className="wb-protein-inputs">{session.proteins.map((protein, index) => (
               <div className="wb-protein-input" key={protein.id}>
                 <b>{protein.role === 'reference' ? '内参' : `目标 ${session.proteins.slice(0, index + 1).filter((item) => item.role === 'target').length}`}</b>
@@ -801,7 +938,6 @@ export default function WesternBlotTool() {
                 {session.proteins.length > 2 && protein.role === 'target' && <button type="button" onClick={() => removeProtein(protein.id)} aria-label={`删除${protein.name || '目标蛋白'}`}><Trash2 size={15} /></button>}
               </div>
             ))}</div>
-            <button type="button" className="add-row-button" onClick={addProtein}><Plus size={16} />添加目标蛋白</button>
           </div>
 
           <div className="wb-setup-section wb-design-section">

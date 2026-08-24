@@ -165,13 +165,19 @@ describe('Western blot calculations', () => {
     expect(calculateWesternBlotLysisRecipe(2, -1)).toBeNull();
   });
 
-  it('scales the fixed denaturation recipe across the batch', () => {
-    expect(calculateWesternBlotDenaturationRecipe(4)?.batch).toEqual({
-      protein: 960,
-      loadingBuffer: 240,
-      total: 1200,
+  it('calculates the per-tube denaturation recipe from the selected total volume', () => {
+    expect(calculateWesternBlotDenaturationRecipe(300)?.perTube).toEqual({
+      protein: 240,
+      loadingBuffer: 60,
+      total: 300,
     });
-    expect(calculateWesternBlotDenaturationRecipe(1.5)).toBeNull();
+    expect(calculateWesternBlotDenaturationRecipe(500)?.perTube).toEqual({
+      protein: 400,
+      loadingBuffer: 100,
+      total: 500,
+    });
+    expect(calculateWesternBlotDenaturationRecipe(0)).toBeNull();
+    expect(calculateWesternBlotDenaturationRecipe(Number.NaN)).toBeNull();
   });
 
   it('uses the approved recipe for the selected thickness and plate count', () => {
