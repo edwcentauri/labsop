@@ -588,13 +588,7 @@ export function resolveWesternBlotRepeatSourceIndex(
   repeatedPlates: boolean[],
 ): number | null {
   if (!Number.isInteger(plateIndex) || plateIndex < 0 || plateIndex >= repeatedPlates.length) return null;
-  let sourceIndex = plateIndex;
-  let remainingDepth = repeatedPlates.length;
-  while (sourceIndex > 0 && repeatedPlates[sourceIndex] && remainingDepth > 0) {
-    sourceIndex -= 1;
-    remainingDepth -= 1;
-  }
-  return sourceIndex;
+  return plateIndex > 0 && repeatedPlates[plateIndex] ? 0 : plateIndex;
 }
 
 export type WesternBlotPlateRepeatGroup = {
