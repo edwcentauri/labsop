@@ -365,11 +365,6 @@ export function calculateWesternBlotLysisRecipe(
 
 export type WesternBlotDenaturationRecipe = {
   perTube: {
-    protein: 240;
-    loadingBuffer: 60;
-    total: 300;
-  };
-  batch: {
     protein: number;
     loadingBuffer: number;
     total: number;
@@ -377,16 +372,17 @@ export type WesternBlotDenaturationRecipe = {
 };
 
 export function calculateWesternBlotDenaturationRecipe(
-  sampleCount: number,
+  totalVolume: number,
 ): WesternBlotDenaturationRecipe | null {
-  if (!Number.isInteger(sampleCount) || sampleCount <= 0) return null;
+  if (!Number.isFinite(totalVolume) || totalVolume <= 0) return null;
+
+  const loadingBuffer = totalVolume / 5;
 
   return {
-    perTube: { protein: 240, loadingBuffer: 60, total: 300 },
-    batch: {
-      protein: sampleCount * 240,
-      loadingBuffer: sampleCount * 60,
-      total: sampleCount * 300,
+    perTube: {
+      protein: totalVolume - loadingBuffer,
+      loadingBuffer,
+      total: totalVolume,
     },
   };
 }

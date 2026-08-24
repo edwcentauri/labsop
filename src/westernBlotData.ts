@@ -48,11 +48,13 @@ export type WesternBlotSopItemKind =
   | 'transfer-setup'
   | 'transfer-run'
   | 'primary-antibody'
-  | 'secondary-antibody';
+  | 'secondary-antibody'
+  | 'exposure';
 
 export type WesternBlotSopItem = {
   kind: WesternBlotSopItemKind;
   text?: string;
+  href?: string;
   details?: string[];
   warning?: string;
 };
@@ -83,7 +85,7 @@ export const westernBlotSopSections: WesternBlotSopSection[] = [
     id: 'denaturation',
     kicker: '02 · DENATURATION',
     title: '变性',
-    summary: '按每管 300 μl 体系完成全批次变性。',
+    summary: '按每管设置的总体积分别配制并完成变性。',
     items: [
       { kind: 'denaturation-recipe' },
       { kind: 'text', text: '干浴锅 100℃ 5–7 min。', warning: '防炸锅：开盖煮至 70℃ 时关盖。' },
@@ -143,7 +145,7 @@ export const westernBlotSopSections: WesternBlotSopSection[] = [
     id: 'primary',
     kicker: '07 · BLOCKING & PRIMARY ANTIBODY',
     title: '封闭、切膜与一抗孵育',
-    summary: '完成快速封闭，再按胶板设计器中的蛋白与切膜线执行。',
+    summary: '完成快速封闭，再为每块胶板分别设计切膜方案并执行。',
     items: [
       { kind: 'text', text: '快速封闭液封闭，慢摇 50 min。' },
       { kind: 'primary-antibody' },
@@ -158,7 +160,11 @@ export const westernBlotSopSections: WesternBlotSopSection[] = [
       { kind: 'text', text: '回收一抗，TBST 快摇漂洗 10 min × 3 次。' },
       { kind: 'secondary-antibody' },
       { kind: 'text', text: '回收二抗，TBST 快摇漂洗 10 min × 3 次。' },
-      { kind: 'text', text: '曝光。' },
+      {
+        kind: 'exposure',
+        text: '曝光。',
+        href: 'https://dxyq.xxmu.edu.cn/customer/index/index.html',
+      },
     ],
   },
 ];
