@@ -1004,7 +1004,7 @@ export default function WesternBlotTool() {
 
       {tab === 'guide' && (
         <section className="qpcr-panel wb-guide-panel">
-          <div className="guide-progress"><div><span>完成进度</span><strong>{completedCount} / {totalSteps}</strong><small>勾选状态自动保存，切换标签页不会清空</small></div><div className="progress-track"><span style={{ width: `${totalSteps ? completedCount / totalSteps * 100 : 0}%` }} /></div></div>
+          <div className="guide-progress"><div><span>完成进度</span><strong>{completedCount} / {totalSteps}</strong><small>勾选状态自动保存，切换标签页不会清空</small></div><div className="progress-track"><span style={{ width: `${totalSteps ? completedCount / totalSteps * 100 : 0}%` }} /></div><div className="guide-progress-actions"><button type="button" className="guide-clear-checks" disabled={completedCount === 0} onClick={() => setSession((current) => ({ ...current, completed: {} }))}><RotateCcw size={13} aria-hidden="true" />清空勾选</button></div></div>
           <div className="guide-heading"><span className="section-kicker">{currentSection.kicker}</span><h2>{currentSection.title}</h2><p>{currentSection.summary}</p></div>
           <div className="wb-guide-items">
             {currentSection.items.map((item, index) => {

@@ -568,6 +568,7 @@ export default function RnaQpcrTool() {
           samples={session.samples}
           concentrations={session.concentrations}
           onToggle={(key) => setCompleted((current) => ({ ...current, [key]: !current[key] }))}
+          onClearAll={() => setCompleted({})}
           onNote={(key, value) => setSession((current) => ({ ...current, notes: { ...current.notes, [key]: value } }))}
           onConcentration={(index, value) => setSession((current) => ({
             ...current,
@@ -730,6 +731,7 @@ function InteractiveGuide({
   samples,
   concentrations,
   onToggle,
+  onClearAll,
   onNote,
   onConcentration,
   onOpenPlateDesigner,
@@ -742,6 +744,7 @@ function InteractiveGuide({
   samples: string[];
   concentrations: string[];
   onToggle: (key: string) => void;
+  onClearAll: () => void;
   onNote: (key: string, value: string) => void;
   onConcentration: (index: number, value: string) => void;
   onOpenPlateDesigner: () => void;
@@ -823,7 +826,12 @@ function InteractiveGuide({
       <div className="guide-progress" ref={progressRef}>
         <div><span>总进度</span><strong>{completedCount} / {totalCount}</strong><small>退出后清空</small></div>
         <div className="progress-track"><span style={{ width: `${progressPercent}%` }} /></div>
-        {renderPageDots('SOP 页码')}
+        <div className="guide-progress-actions">
+          <button type="button" className="guide-clear-checks" disabled={completedCount === 0} onClick={onClearAll}>
+            <RotateCcw size={13} aria-hidden="true" />清空勾选
+          </button>
+          {renderPageDots('SOP 页码')}
+        </div>
       </div>
       <div className="guide-heading"><span className="section-kicker">{section.kicker}</span><h2>{section.title}</h2><p>{section.summary}</p></div>
       {section.id === 'rna-concentration' && (
