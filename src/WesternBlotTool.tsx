@@ -12,6 +12,7 @@ import {
   FlaskConical,
   GripHorizontal,
   LayoutGrid,
+  Minus,
   NotebookPen,
   Plus,
   RotateCcw,
@@ -45,8 +46,6 @@ type ProteinRole = 'target' | 'reference';
 type WellCount = 10 | 15 | 30;
 type GelPercentage = '6' | '8' | '10' | '12.5' | '';
 type SecondaryAntibody = '鼠抗' | '兔抗' | '';
-type LysisExcessVolume = '100' | '200';
-
 type ProteinInput = {
   id: string;
   role: ProteinRole;
@@ -76,8 +75,9 @@ type WesternBlotSession = {
   denaturationVolume: string;
   firstMarkerVolume: string;
   lastMarkerVolume: string;
+  lysisVolumePerTube: string;
   addLysisExcess: boolean;
-  lysisExcessVolume: LysisExcessVolume;
+  lysisExcessTubes: string;
   voltage: string;
   transferCurrent: string;
   proteins: ProteinInput[];
@@ -86,8 +86,8 @@ type WesternBlotSession = {
   completed: Record<string, boolean>;
 };
 
-const STORAGE_KEY = 'labsop:western-blot-session:v3';
-const LEGACY_STORAGE_KEYS = ['labsop:western-blot-session:v2', 'labsop:western-blot-session:v1'];
+const STORAGE_KEY = 'labsop:western-blot-session:v4';
+const LEGACY_STORAGE_KEYS = ['labsop:western-blot-session:v3', 'labsop:western-blot-session:v2', 'labsop:western-blot-session:v1'];
 const DEFAULT_PROTEINS: ProteinInput[] = [
   { id: 'target-1', role: 'target', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' },
   { id: 'reference-1', role: 'reference', name: '', molecularWeight: '', primaryDilution: '', secondaryAntibody: '' },
@@ -123,8 +123,9 @@ function createDefaultSession(): WesternBlotSession {
     denaturationVolume: '300',
     firstMarkerVolume: '5',
     lastMarkerVolume: '3',
+    lysisVolumePerTube: '400',
     addLysisExcess: false,
-    lysisExcessVolume: '100',
+    lysisExcessTubes: '1',
     voltage: '250',
     transferCurrent: '400',
     proteins: DEFAULT_PROTEINS.map((protein) => ({ ...protein })),
@@ -237,8 +238,9 @@ function loadSession(): WesternBlotSession {
       denaturationVolume: stringValue(parsed.denaturationVolume, '300'),
       firstMarkerVolume: stringValue(parsed.firstMarkerVolume, '5'),
       lastMarkerVolume: stringValue(parsed.lastMarkerVolume, '3'),
+      lysisVolumePerTube: stringValue(parsed.lysisVolumePerTube, '400'),
       addLysisExcess: parsed.addLysisExcess === true,
-      lysisExcessVolume: parsed.lysisExcessVolume === '200' ? '200' : '100',
+      lysisExcessTubes: stringValue(parsed.lysisExcessTubes, '1'),
       voltage: stringValue(parsed.voltage, '250'),
       transferCurrent: stringValue(parsed.transferCurrent, '400'),
       proteins: safeProteins,
@@ -277,6 +279,41 @@ function NumberField({ label, value, unit, min = 0, step = 'any', onChange }: {
         <b>{unit}</b>
       </span>
     </label>
+  );
+}
+
+function DecimalStepper({ label, value, unit, min = 0, step, onChange }: {
+  label: string;
+  value: string;
+  unit: string;
+  min?: number;
+  step: number;
+  onChange: (value: string) => void;
+}) {
+  const parsedValue = cleanNumber(value);
+  const roundToStep = (nextValue: number) => String(Math.round(nextValue / step) * step);
+  const changeBy = (direction: -1 | 1) => {
+    const currentValue = parsedValue ?? min;
+    onChange(roundToStep(Math.max(min, currentValue + direction * step)));
+  };
+
+  return (
+    <div className="wb-decimal-stepper">
+      <span>{label}</span>
+      <span className="wb-decimal-stepper-control">
+        <button type="button" disabled={parsedValue !== null && parsedValue <= min} onClick={() => changeBy(-1)} aria-label={`${label}减少 ${step}`}><Minus size={14} /></button>
+        <input
+          type="number"
+          min={min}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label={label}
+        />
+        <button type="button" onClick={() => changeBy(1)} aria-label={`${label}增加 ${step}`}><Plus size={14} /></button>
+      </span>
+      <b>{unit}</b>
+    </div>
   );
 }
 
@@ -500,7 +537,8 @@ export default function WesternBlotTool() {
 
   const sampleCount = cleanNumber(session.sampleCount);
   const validSampleCount = sampleCount !== null && Number.isInteger(sampleCount) && sampleCount > 0 ? sampleCount : null;
-  const lysisExcessVolume = session.addLysisExcess ? Number(session.lysisExcessVolume) : 0;
+  const lysisVolumePerTube = cleanNumber(session.lysisVolumePerTube);
+  const lysisExcessTubes = session.addLysisExcess ? cleanNumber(session.lysisExcessTubes) : 0;
   const batchPlateCount = session.plateCount === '' ? 0 : session.plateCount;
   const activePlates = session.plates.slice(0, batchPlateCount);
   const effectivePlate = (plate: PlateDesign) => {
@@ -512,8 +550,8 @@ export default function WesternBlotTool() {
   };
   const effectivePlates = activePlates.map(effectivePlate);
   const usedWells = validSampleCount === null ? null : calculateWesternBlotUsedWells(validSampleCount);
-  const lysisRecipe = validSampleCount !== null
-    ? calculateWesternBlotLysisRecipe(validSampleCount, lysisExcessVolume)
+  const lysisRecipe = validSampleCount !== null && lysisVolumePerTube !== null && lysisExcessTubes !== null
+    ? calculateWesternBlotLysisRecipe(validSampleCount, lysisVolumePerTube, lysisExcessTubes)
     : null;
   const denaturationVolume = cleanNumber(session.denaturationVolume);
   const denaturationRecipe = denaturationVolume === null
@@ -550,7 +588,7 @@ export default function WesternBlotTool() {
       }
     });
     return Array.from(new Set(errors));
-  }, [effectivePlates, lysisExcessVolume, session, usedWells, validSampleCount]);
+  }, [effectivePlates, session, usedWells, validSampleCount]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
@@ -751,15 +789,15 @@ export default function WesternBlotTool() {
 
   const renderDynamicItem = (item: WesternBlotSopItem) => {
     if (item.kind === 'lysis-recipe') {
-      return lysisRecipe ? (
+      return validSampleCount !== null ? (
         <div className="wb-recipe-card">
-          <strong>本批次裂解液 · 总体积 {formatQuantity(lysisRecipe.totalVolume)} μl</strong>
+          <strong>本批次裂解液{lysisRecipe ? ` · 总体积 ${formatQuantity(lysisRecipe.totalVolume)} μl` : ''}</strong>
           <div className="wb-inline-options">
+            <label className="wb-lysis-volume"><span>每管体积</span><span className="wb-inline-number"><input type="number" min={0} step="any" value={session.lysisVolumePerTube} onChange={(event) => setSession((current) => ({ ...current, lysisVolumePerTube: event.target.value }))} aria-label="裂解液每管体积" /><b>μl</b></span></label>
             <label><input type="checkbox" checked={session.addLysisExcess} onChange={(event) => setSession((current) => ({ ...current, addLysisExcess: event.target.checked }))} /><span>添加冗余</span></label>
-            {session.addLysisExcess && <label><span>冗余量</span><select value={session.lysisExcessVolume} onChange={(event) => setSession((current) => ({ ...current, lysisExcessVolume: event.target.value as LysisExcessVolume }))}><option value="100">+100 μl</option><option value="200">+200 μl</option></select></label>}
+            {session.addLysisExcess && <DecimalStepper label="冗余量" value={session.lysisExcessTubes} unit="管" step={0.5} onChange={(value) => setSession((current) => ({ ...current, lysisExcessTubes: value }))} />}
           </div>
-          <p><b>{validSampleCount} 管</b> × 400 μl {session.addLysisExcess ? <>+ 冗余 <b>{formatQuantity(lysisRecipe.excessVolume)} μl</b></> : '（不添加冗余）'}</p>
-          <dl><div><dt>50× 蛋白酶抑制剂</dt><dd>{formatQuantity(lysisRecipe.proteaseInhibitor)} μl</dd></div><div><dt>50× 磷酸酶抑制剂</dt><dd>{formatQuantity(lysisRecipe.phosphataseInhibitor)} μl</dd></div><div><dt>RIPA 裂解液</dt><dd>{formatQuantity(lysisRecipe.ripa)} μl</dd></div></dl>
+          {lysisRecipe ? <><p><b>{validSampleCount} 管</b> × {formatQuantity(lysisRecipe.perTubeVolume)} μl {session.addLysisExcess ? <>+ 冗余 <b>{formatQuantity(lysisRecipe.excessTubeCount)} 管（{formatQuantity(lysisRecipe.excessVolume)} μl）</b></> : '（不添加冗余）'}</p><dl><div><dt>50× 蛋白酶抑制剂</dt><dd>{formatQuantity(lysisRecipe.proteaseInhibitor)} μl</dd></div><div><dt>50× 磷酸酶抑制剂</dt><dd>{formatQuantity(lysisRecipe.phosphataseInhibitor)} μl</dd></div><div><dt>RIPA 裂解液</dt><dd>{formatQuantity(lysisRecipe.ripa)} μl</dd></div></dl></> : <div className="wb-inline-error"><CircleAlert size={16} />每管体积须大于 0；冗余量须为不小于 0 且按 0.5 递增的数字。</div>}
         </div>
       ) : <div className="wb-inline-error"><CircleAlert size={16} />返回初始化填写本次测样数。</div>;
     }

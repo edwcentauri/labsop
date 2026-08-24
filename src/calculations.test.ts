@@ -154,17 +154,22 @@ describe('calculateTubeDistribution', () => {
 });
 
 describe('Western blot calculations', () => {
-  it('calculates the lysis recipe from sample count and explicit excess volume', () => {
-    expect(calculateWesternBlotLysisRecipe(6, 200)).toEqual({
+  it('calculates the lysis recipe from editable per-tube volume and excess tubes', () => {
+    expect(calculateWesternBlotLysisRecipe(6, 400, 1)).toEqual({
+      perTubeVolume: 400,
+      excessTubeCount: 1,
       tissueVolume: 2400,
-      excessVolume: 200,
-      totalVolume: 2600,
-      proteaseInhibitor: 52,
-      phosphataseInhibitor: 52,
-      ripa: 2496,
+      excessVolume: 400,
+      totalVolume: 2800,
+      proteaseInhibitor: 56,
+      phosphataseInhibitor: 56,
+      ripa: 2688,
     });
-    expect(calculateWesternBlotLysisRecipe(0, 200)).toBeNull();
-    expect(calculateWesternBlotLysisRecipe(2, -1)).toBeNull();
+    expect(calculateWesternBlotLysisRecipe(2, 350, 0.5)?.totalVolume).toBe(875);
+    expect(calculateWesternBlotLysisRecipe(0, 400, 1)).toBeNull();
+    expect(calculateWesternBlotLysisRecipe(2, 0, 1)).toBeNull();
+    expect(calculateWesternBlotLysisRecipe(2, 400, -0.5)).toBeNull();
+    expect(calculateWesternBlotLysisRecipe(2, 400, 0.25)).toBeNull();
   });
 
   it('calculates the per-tube denaturation recipe from the selected total volume', () => {
