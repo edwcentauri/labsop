@@ -140,22 +140,18 @@ export const westernBlotSopSections: WesternBlotSopSection[] = [
     ],
   },
   {
-    id: 'blocking',
-    kicker: '07 · BLOCKING',
-    title: '封闭',
-    summary: '完成快速封闭液封闭。',
-    items: [{ kind: 'text', text: '快速封闭液封闭，慢摇 50 min。' }],
-  },
-  {
     id: 'primary',
-    kicker: '08 · PRIMARY ANTIBODY',
-    title: '切膜与一抗孵育',
-    summary: '按胶板设计器中的蛋白与切膜线执行。',
-    items: [{ kind: 'primary-antibody' }],
+    kicker: '07 · BLOCKING & PRIMARY ANTIBODY',
+    title: '封闭、切膜与一抗孵育',
+    summary: '完成快速封闭，再按胶板设计器中的蛋白与切膜线执行。',
+    items: [
+      { kind: 'text', text: '快速封闭液封闭，慢摇 50 min。' },
+      { kind: 'primary-antibody' },
+    ],
   },
   {
     id: 'secondary',
-    kicker: '09 · SECONDARY ANTIBODY',
+    kicker: '08 · SECONDARY ANTIBODY',
     title: '二抗孵育与曝光',
     summary: '依次完成一抗回收与漂洗、二抗孵育、二抗回收与漂洗，随后曝光。',
     items: [

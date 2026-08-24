@@ -536,3 +536,24 @@ export function resolveWesternBlotRepeatSourceIndex(
   }
   return sourceIndex;
 }
+
+export type WesternBlotPlateRepeatGroup = {
+  sourceIndex: number;
+  plateIndices: number[];
+};
+
+export function groupWesternBlotPlateRepeats(
+  repeatedPlates: boolean[],
+): WesternBlotPlateRepeatGroup[] {
+  return repeatedPlates.reduce<WesternBlotPlateRepeatGroup[]>((groups, _, plateIndex) => {
+    const sourceIndex = resolveWesternBlotRepeatSourceIndex(plateIndex, repeatedPlates);
+    if (sourceIndex === null) return groups;
+    const existingGroup = groups.find((group) => group.sourceIndex === sourceIndex);
+    if (existingGroup) {
+      existingGroup.plateIndices.push(plateIndex);
+    } else {
+      groups.push({ sourceIndex, plateIndices: [plateIndex] });
+    }
+    return groups;
+  }, []);
+}

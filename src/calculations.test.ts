@@ -9,6 +9,7 @@ import {
   calculateWesternBlotUsedWells,
   createQpcrPlateLayout,
   createWesternBlotLaneLabels,
+  groupWesternBlotPlateRepeats,
   resolveWesternBlotRepeatSourceIndex,
   summarizeQpcrPlateUsage,
   westernBlotMolecularWeightPosition,
@@ -214,5 +215,18 @@ describe('Western blot calculations', () => {
     expect(resolveWesternBlotRepeatSourceIndex(3, [false, true, true, true])).toBe(0);
     expect(resolveWesternBlotRepeatSourceIndex(3, [false, true, false, true])).toBe(2);
     expect(resolveWesternBlotRepeatSourceIndex(4, [false, true, false, true])).toBeNull();
+  });
+
+  it('groups repeat plates into one diagram while retaining every plate label', () => {
+    expect(groupWesternBlotPlateRepeats([false, true])).toEqual([
+      { sourceIndex: 0, plateIndices: [0, 1] },
+    ]);
+    expect(groupWesternBlotPlateRepeats([false, true, true, true])).toEqual([
+      { sourceIndex: 0, plateIndices: [0, 1, 2, 3] },
+    ]);
+    expect(groupWesternBlotPlateRepeats([false, true, false, true])).toEqual([
+      { sourceIndex: 0, plateIndices: [0, 1] },
+      { sourceIndex: 2, plateIndices: [2, 3] },
+    ]);
   });
 });
