@@ -482,6 +482,11 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .guide-progress > div:first-child strong { font-size: 12px; }
 .guide-progress > div:first-child small { color: #a06c21; font-size: 8px; font-weight: 650; white-space: nowrap; }
 .guide-progress > .progress-track { position: absolute; right: 0; bottom: -1px; left: 0; height: 3px; }
+.guide-progress-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+.guide-clear-checks { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 5px; min-height: 28px; padding: 0 9px; border: 1px solid #d7e4e0; border-radius: 9px; color: #526d67; background: white; font-size: 9px; font-weight: 700; cursor: pointer; }
+.guide-clear-checks:hover:not(:disabled) { color: #0f766e; border-color: #9dc9c1; background: #f2f9f7; }
+.guide-clear-checks:focus-visible { outline: 3px solid #0f766e24; outline-offset: 2px; }
+.guide-clear-checks:disabled { opacity: .42; cursor: not-allowed; }
 .progress-track { height: 5px; overflow: hidden; border-radius: 999px; background: #e8efed; }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: #19a092; transition: width .2s ease; }
 .page-dots { display: flex; gap: 5px; }
@@ -726,6 +731,9 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .manual-toolbar-actions { grid-column: 1 / -1; }
   .setup-grid { grid-template-columns: 1fr; }
   .run-options { grid-template-columns: 1fr 1fr; }
+  .guide-progress { grid-template-columns: 1fr; }
+  .guide-progress-actions { justify-content: space-between; }
+  .guide-progress-actions .page-dots { min-width: 0; overflow-x: auto; }
   .guide-progress > div:first-child small { display: none; }
   .embedded-tool-heading { display: block; }
   .embedded-tool-heading p { margin-top: 7px; text-align: left; }
@@ -789,6 +797,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .guide-pagination { border-color: #2a3d39; }
 [data-theme='dark'] .guide-floating-pagination { border-color: #314642; background: #14211ff2; box-shadow: 0 12px 36px #0007; }
 [data-theme='dark'] .guide-floating-pagination > button { color: #a7d8d0; background: #1d302c; }
+[data-theme='dark'] .guide-clear-checks { color: #b8cbc7; border-color: #314642; background: #162522; }
+[data-theme='dark'] .guide-clear-checks:hover:not(:disabled) { color: #93d8cd; border-color: #407067; background: #1b302c; }
 [data-theme='dark'] .panel-heading p,
 [data-theme='dark'] .guide-heading p { color: #8ea39e; }
 [data-theme='dark'] .manual-count { color: #8fa5a1; }
