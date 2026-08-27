@@ -528,6 +528,11 @@ export function westernBlotMolecularWeightPosition(
   return 100 - (molecularWeight / maximumMarkerWeight) * 100;
 }
 
+export function roundWesternBlotCutLinePosition(molecularWeight: number): number | null {
+  if (!Number.isFinite(molecularWeight) || molecularWeight < 0) return null;
+  return Math.round(molecularWeight / 5) * 5;
+}
+
 type WesternBlotMarkerPositionReference = {
   molecularWeight: number;
   positionPercent: number;
