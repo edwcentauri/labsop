@@ -135,6 +135,10 @@ function createDefaultSession(): WesternBlotSession {
   };
 }
 
+function defaultVisibleCutPlateNumbers(plates: PlateDesign[]): number[] {
+  return plates.filter(({ repeated }) => !repeated).map(({ number }) => number);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -528,8 +532,10 @@ function PlateDesigner({ plate, sourcePlateNumber, proteins, sampleNames, firstM
 export default function WesternBlotTool() {
   const [tab, setTab] = useState<ToolTab>('setup');
   const [guidePage, setGuidePage] = useState(0);
-  const [visibleCutPlateNumbers, setVisibleCutPlateNumbers] = useState<number[]>([1, 2, 3, 4]);
   const [session, setSession] = useState<WesternBlotSession>(loadSession);
+  const [visibleCutPlateNumbers, setVisibleCutPlateNumbers] = useState<number[]>(
+    () => defaultVisibleCutPlateNumbers(session.plates),
+  );
 
   const sampleCount = cleanNumber(session.sampleCount);
   const validSampleCount = sampleCount !== null && Number.isInteger(sampleCount) && sampleCount > 0 ? sampleCount : null;
@@ -595,6 +601,10 @@ export default function WesternBlotTool() {
   };
 
   const updateRepeatedPlate = (number: number, repeated: boolean) => {
+    setVisibleCutPlateNumbers((current) => {
+      if (repeated) return current.filter((plateNumber) => plateNumber !== number);
+      return current.includes(number) ? current : [...current, number];
+    });
     setSession((current) => {
       const source = current.plates[0];
       return {
@@ -677,8 +687,9 @@ export default function WesternBlotTool() {
   };
 
   const resetSession = () => {
-    setSession(createDefaultSession());
-    setVisibleCutPlateNumbers([1, 2, 3, 4]);
+    const defaultSession = createDefaultSession();
+    setSession(defaultSession);
+    setVisibleCutPlateNumbers(defaultVisibleCutPlateNumbers(defaultSession.plates));
     setGuidePage(0);
     setTab('setup');
   };
