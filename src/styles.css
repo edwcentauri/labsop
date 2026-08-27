@@ -943,8 +943,9 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-plate-controls legend { padding: 0 4px; color: #5e726d; font-size: 9px; font-weight: 750; }
 .wb-protein-checks { display: flex; gap: 10px; min-height: 24px; overflow-x: auto; }
 .wb-protein-checks label { display: flex; align-items: center; gap: 5px; min-width: max-content; color: #405b55; font-size: 10px; }
-.wb-add-cut { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 40px; padding: 0 12px; border: 1px solid #d5cdef; border-radius: 10px; color: #604e99; background: #f7f4ff; font-size: 10px; font-weight: 750; cursor: pointer; }
+.wb-add-cut { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 4px; min-height: 24px; padding: 0 8px; border: 1px solid #d5cdef; border-radius: 999px; color: #604e99; background: #f7f4ff; font-size: 10px; font-weight: 750; line-height: 1.4; white-space: nowrap; cursor: pointer; }
 .wb-add-cut:disabled { opacity: .45; cursor: not-allowed; }
+.wb-add-cut:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .wb-inline-error { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 10px 12px; border: 1px solid #efcfc5; border-radius: 10px; color: #9e4e3d; background: #fff8f5; font-size: 10px; line-height: 1.55; }
 .wb-lane-labels { display: grid; min-width: max-content; }
 .wb-lane-editor { display: grid; width: 100%; min-width: 0; max-width: 100%; gap: 4px; margin-top: 16px; overflow-x: auto; padding-bottom: 8px; overscroll-behavior-inline: contain; touch-action: pan-x; }
@@ -980,15 +981,16 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-right-cut-line { position: absolute; top: 0; right: auto; bottom: 0; z-index: 6; width: 0; border-right: 2px solid #db3d42; pointer-events: none; }
 .wb-right-cut-line span { position: absolute; top: 8px; right: 3px; padding: 3px 1px; color: #b82b31; background: #fff5f5dc; font-size: 7px; font-weight: 800; line-height: 1; writing-mode: vertical-rl; }
 .wb-zero-label { position: absolute; bottom: 3px; left: 4px; color: #7b8986; font-size: 7px; }
-.wb-cut-line-controls { margin-top: 10px; padding: 10px; border: 1px solid #ead0d0; border-radius: 10px; background: #fffafa; }
+.wb-cut-line-controls { margin-top: 8px; padding: 8px; border: 1px solid #ead0d0; border-radius: 10px; background: #fffafa; }
 .wb-cut-line-controls-header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 8px; }
 .wb-cut-line-controls-header strong { color: #7d4040; font-size: 10px; }
 .wb-cut-line-controls-header span { color: #9a7474; font-size: 8px; }
-.wb-cut-line-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-.wb-cut-line-control { display: flex; align-items: center; gap: 5px; min-height: 38px; padding: 4px 4px 4px 7px; border: 1px solid #ead0d0; border-radius: 9px; color: #8b4c4c; background: white; font-size: 9px; }
+.wb-cut-line-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.wb-cut-line-control { display: flex; align-items: center; gap: 6px; min-height: 24px; color: #8b4c4c; font-size: 10px; }
 .wb-cut-line-control > span { font-weight: 750; white-space: nowrap; }
-.wb-cut-line-control output { display: grid; place-items: center; min-width: 38px; min-height: 28px; padding: 0 4px; border: 1px solid #ead0d0; border-radius: 7px; color: inherit; background: #fffafa; font-weight: 800; }
-.wb-cut-line-control button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 28px; padding: 0 6px; border: 0; border-radius: 7px; color: #9b4141; background: #f8e8e8; font: inherit; font-weight: 750; cursor: pointer; }
+.wb-cut-line-control output { font-weight: 800; }
+.wb-cut-line-control button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 24px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; color: #9b4141; background: #f8e8e8; cursor: pointer; }
+.wb-cut-line-control button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .wb-validation-summary { display: flex; align-items: flex-start; gap: 10px; padding: 15px 17px; border: 1px solid #edc9bd; border-radius: 15px; color: #934b3b; background: #fff8f5; }
 .wb-validation-summary strong { font-size: 11px; }
 .wb-validation-summary ul { margin: 7px 0 0; padding-left: 18px; font-size: 10px; line-height: 1.7; }
@@ -1045,8 +1047,9 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-cut-visibility legend { padding: 0 5px; color: #526a65; font-size: 10px; font-weight: 800; }
 .wb-cut-visibility label { display: inline-flex; align-items: center; gap: 6px; color: #405b55; font-size: 10px; font-weight: 700; cursor: pointer; }
 .wb-cut-visibility input { accent-color: #6f5cad; }
-.wb-cut-plan-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.wb-cut-plan-header .wb-diagram-plate-pills { margin-bottom: 0; }
+.wb-cut-plan-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.wb-cut-plan-header .wb-diagram-plate-pills { flex: 1; min-width: 0; margin-bottom: 0; }
+.wb-cut-plan-header .wb-diagram-plate-pills span { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; line-height: 1.4; white-space: nowrap; }
 .wb-exposure-step { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .wb-exposure-step p { margin: 0; }
 .wb-exposure-step a { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 10px; color: white; background: #65549e; font-size: 11px; font-weight: 800; text-decoration: none; }
@@ -1064,7 +1067,6 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .wb-field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .wb-plate-controls { grid-template-columns: 1fr 1fr; }
   .wb-plate-controls fieldset { grid-column: 1 / -1; }
-  .wb-add-cut { justify-self: start; }
 }
 
 @media (max-width: 700px) {
@@ -1084,12 +1086,9 @@ footer p { margin: 8px 0 0; font-size: 12px; }
   .wb-plate-designer { padding: 14px; }
   .wb-plate-controls { grid-template-columns: 1fr; }
   .wb-plate-controls fieldset { grid-column: auto; }
-  .wb-add-cut { width: 100%; }
   .wb-gel-recipe-grid { grid-template-columns: 1fr; }
   .wb-step-parameter { grid-template-columns: 1fr; }
   .wb-guide-item { grid-template-columns: 30px 1fr; padding: 12px; }
-  .wb-cut-plan-header { align-items: stretch; flex-direction: column; }
-  .wb-cut-plan-header .wb-add-cut { width: 100%; }
 }
 
 @media (max-width: 430px) {
@@ -1135,8 +1134,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .wb-cut-line-controls { border-color: #5d3c3c; background: #241919; }
 [data-theme='dark'] .wb-cut-line-controls-header strong { color: #efb0b0; }
 [data-theme='dark'] .wb-cut-line-controls-header span { color: #bd9191; }
-[data-theme='dark'] .wb-cut-line-control { color: #e5b2b2; border-color: #5d3c3c; background: #2b1d1d; }
-[data-theme='dark'] .wb-cut-line-control output { color: #f0caca; border-color: #674747; background: #211717; }
+[data-theme='dark'] .wb-cut-line-control { color: #e5b2b2; }
+[data-theme='dark'] .wb-cut-line-control output { color: #f0caca; }
 [data-theme='dark'] .wb-cut-line-control button { color: #f2baba; background: #4a2c2c; }
 [data-theme='dark'] .wb-recipe-card > strong,
 [data-theme='dark'] .wb-recipe-card dd { color: #dbe8e5; }
