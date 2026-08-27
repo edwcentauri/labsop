@@ -30,6 +30,7 @@ import {
   createWesternBlotLaneLabels,
   groupWesternBlotPlateRepeats,
   resolveWesternBlotRepeatSourceIndex,
+  roundWesternBlotCutLinePosition,
   westernBlotReferencedMolecularWeightPosition,
   westernBlotReferencedPositionMolecularWeight,
   type WesternBlotGelThickness,
@@ -349,15 +350,16 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
   };
 
   return (
-    <div className="wb-design-table">
-      <div className="wb-lane-labels" style={{ gridTemplateColumns: `repeat(${plate.wellCount}, minmax(74px, 1fr))` }}>
-        {plate.laneLabels.map((label, index) => <span key={`lane-${index}`} title={label}>{label}</span>)}
-      </div>
-      <div
-        className="wb-membrane-plot"
-        style={{ minWidth: `${plate.wellCount * 74}px` }}
-        aria-label={`第 ${plate.number} 板膜图，Marker 上限 ${maximumWeight} kDa`}
-      >
+    <div className="wb-marker-plot">
+      <div className="wb-design-table">
+        <div className="wb-lane-labels" style={{ gridTemplateColumns: `repeat(${plate.wellCount}, minmax(74px, 1fr))` }}>
+          {plate.laneLabels.map((label, index) => <span key={`lane-${index}`} title={label}>{label}</span>)}
+        </div>
+        <div
+          className="wb-membrane-plot"
+          style={{ minWidth: `${plate.wellCount * 74}px` }}
+          aria-label={`第 ${plate.number} 板膜图，Marker 上限 ${maximumWeight} kDa`}
+        >
         <div className="wb-marker-zone" style={{ width: `${markerWidth}%` }} aria-label={`${marker.name} ${marker.rangeLabel}`}>
           <span className="wb-marker-zone-title">Marker</span>
           {marker.bands.map((band) => {
@@ -423,26 +425,30 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
             </div>
           );
         })}
-        {showRightCutLine && <div className="wb-right-cut-line" style={{ left: `${rightCutLinePosition}%` }}><span>切膜线</span></div>}
-        <span className="wb-zero-label">0 kDa</span>
+          {showRightCutLine && <div className="wb-right-cut-line" style={{ left: `${rightCutLinePosition}%` }}><span>切膜线</span></div>}
+          <span className="wb-zero-label">0 kDa</span>
+        </div>
       </div>
       {!readOnly && plate.cutLines.length > 0 && (
-        <div className="wb-cut-line-list" aria-label="切膜线位置">
-          {plate.cutLines.map((line, index) => (
-            <label key={`cut-control-${index}`}>
-              <span>切膜线 {index + 1}</span>
-              <input
-                type="number"
-                min={0}
-                max={maximumWeight}
-                step={1}
-                value={Math.min(maximumWeight, Math.max(0, line))}
-                onChange={(event) => onChangeCutLine(index, Number(event.target.value))}
-              />
-              <b>kDa</b>
-              <button type="button" onClick={() => onDeleteCutLine(index)} aria-label={`删除切膜线 ${index + 1}`}><Trash2 size={14} /></button>
-            </label>
-          ))}
+        <div className="wb-cut-line-controls" role="group" aria-label="横向切膜线位置与删除操作">
+          <div className="wb-cut-line-controls-header">
+            <strong>横向切膜线位置</strong>
+            <span>每 5 kDa 显示 · 不含竖直切膜线</span>
+          </div>
+          <div className="wb-cut-line-list">
+            {plate.cutLines.map((line, index) => {
+              const safeLine = Math.min(maximumWeight, Math.max(0, line));
+              const displayedLine = roundWesternBlotCutLinePosition(safeLine) ?? 0;
+              return (
+                <div className="wb-cut-line-control" key={`cut-control-${index}`}>
+                  <span>切膜线 {index + 1}</span>
+                  <output aria-label={`切膜线 ${index + 1} 位置`}>{displayedLine}</output>
+                  <b>kDa</b>
+                  <button type="button" onClick={() => onDeleteCutLine(index)} aria-label={`删除切膜线 ${index + 1}`}><Trash2 size={14} /><span>删除</span></button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

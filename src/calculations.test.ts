@@ -11,6 +11,7 @@ import {
   createWesternBlotLaneLabels,
   groupWesternBlotPlateRepeats,
   resolveWesternBlotRepeatSourceIndex,
+  roundWesternBlotCutLinePosition,
   summarizeQpcrPlateUsage,
   westernBlotMolecularWeightPosition,
   westernBlotReferencedMolecularWeightPosition,
@@ -222,6 +223,14 @@ describe('Western blot calculations', () => {
     expect(westernBlotMolecularWeightPosition(150, 300)).toBe(50);
     expect(westernBlotMolecularWeightPosition(0, 300)).toBe(100);
     expect(westernBlotMolecularWeightPosition(301, 300)).toBeNull();
+  });
+
+  it('rounds displayed cut-line positions to the nearest 5 kDa', () => {
+    expect(roundWesternBlotCutLinePosition(122)).toBe(120);
+    expect(roundWesternBlotCutLinePosition(123)).toBe(125);
+    expect(roundWesternBlotCutLinePosition(0)).toBe(0);
+    expect(roundWesternBlotCutLinePosition(-1)).toBeNull();
+    expect(roundWesternBlotCutLinePosition(Number.NaN)).toBeNull();
   });
 
   it('maps molecular weights and cut lines against marker reference spacing', () => {

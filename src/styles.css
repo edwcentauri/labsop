@@ -953,6 +953,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-lane-editor input { min-height: 34px; padding: 0 7px; border-radius: 8px; font-size: 9px; text-align: center; }
 .wb-designer-placeholder { margin-top: 12px; padding: 16px; border: 1px dashed #d7e1de; border-radius: 11px; color: #84938f; background: #fafcfb; font-size: 10px; text-align: center; }
 .wb-designer-empty { margin: 14px 20px 20px; }
+.wb-marker-plot { min-width: 0; }
 .wb-design-table { width: 100%; max-width: 100%; max-height: min(70vh, 360px); margin-top: 6px; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; scrollbar-gutter: stable both-edges; -webkit-overflow-scrolling: touch; }
 .wb-lane-labels { position: sticky; top: 0; z-index: 9; border: 1px solid #dfe7e4; border-bottom: 0; background: #f5f8f7; }
 .wb-lane-labels span { overflow: hidden; padding: 7px 4px; border-right: 1px solid #e1e7e5; color: #61736e; font-size: 8px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
@@ -977,10 +978,15 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-right-cut-line { position: absolute; top: 0; right: auto; bottom: 0; z-index: 6; width: 0; border-right: 2px solid #db3d42; pointer-events: none; }
 .wb-right-cut-line span { position: absolute; top: 8px; right: 3px; padding: 3px 1px; color: #b82b31; background: #fff5f5dc; font-size: 7px; font-weight: 800; line-height: 1; writing-mode: vertical-rl; }
 .wb-zero-label { position: absolute; bottom: 3px; left: 4px; color: #7b8986; font-size: 7px; }
+.wb-cut-line-controls { margin-top: 10px; padding: 10px; border: 1px solid #ead0d0; border-radius: 10px; background: #fffafa; }
+.wb-cut-line-controls-header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 8px; }
+.wb-cut-line-controls-header strong { color: #7d4040; font-size: 10px; }
+.wb-cut-line-controls-header span { color: #9a7474; font-size: 8px; }
 .wb-cut-line-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-.wb-cut-line-list label { display: flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 5px 0 9px; border: 1px solid #ead0d0; border-radius: 9px; color: #8b4c4c; background: #fffafa; font-size: 9px; }
-.wb-cut-line-list input { width: 55px; border: 0; outline: 0; color: inherit; background: transparent; font: inherit; }
-.wb-cut-line-list button { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 7px; color: #a65252; background: #f8e8e8; cursor: pointer; }
+.wb-cut-line-control { display: flex; align-items: center; gap: 5px; min-height: 38px; padding: 4px 4px 4px 7px; border: 1px solid #ead0d0; border-radius: 9px; color: #8b4c4c; background: white; font-size: 9px; }
+.wb-cut-line-control > span { font-weight: 750; white-space: nowrap; }
+.wb-cut-line-control output { display: grid; place-items: center; min-width: 38px; min-height: 28px; padding: 0 4px; border: 1px solid #ead0d0; border-radius: 7px; color: inherit; background: #fffafa; font-weight: 800; }
+.wb-cut-line-control button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 28px; padding: 0 6px; border: 0; border-radius: 7px; color: #9b4141; background: #f8e8e8; font: inherit; font-weight: 750; cursor: pointer; }
 .wb-validation-summary { display: flex; align-items: flex-start; gap: 10px; padding: 15px 17px; border: 1px solid #edc9bd; border-radius: 15px; color: #934b3b; background: #fff8f5; }
 .wb-validation-summary strong { font-size: 11px; }
 .wb-validation-summary ul { margin: 7px 0 0; padding-left: 18px; font-size: 10px; line-height: 1.7; }
@@ -1124,6 +1130,12 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 [data-theme='dark'] .wb-lane-labels { border-color: #344843; background: #182724; }
 [data-theme='dark'] .wb-lane-labels span { color: #a4b6b1; border-color: #2c3e3a; }
 [data-theme='dark'] .wb-membrane-plot { border-color: #344843; background: linear-gradient(#e8efed, #cfd9d6); }
+[data-theme='dark'] .wb-cut-line-controls { border-color: #5d3c3c; background: #241919; }
+[data-theme='dark'] .wb-cut-line-controls-header strong { color: #efb0b0; }
+[data-theme='dark'] .wb-cut-line-controls-header span { color: #bd9191; }
+[data-theme='dark'] .wb-cut-line-control { color: #e5b2b2; border-color: #5d3c3c; background: #2b1d1d; }
+[data-theme='dark'] .wb-cut-line-control output { color: #f0caca; border-color: #674747; background: #211717; }
+[data-theme='dark'] .wb-cut-line-control button { color: #f2baba; background: #4a2c2c; }
 [data-theme='dark'] .wb-recipe-card > strong,
 [data-theme='dark'] .wb-recipe-card dd { color: #dbe8e5; }
 [data-theme='dark'] .wb-recipe-card dl > div { border-color: #2b403c; }
