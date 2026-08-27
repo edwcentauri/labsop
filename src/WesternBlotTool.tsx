@@ -433,7 +433,7 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
                   }
                 }}
               >
-                <GripHorizontal size={14} />切膜线
+                <GripHorizontal size={12} />切膜线
               </span>
             </div>
           );

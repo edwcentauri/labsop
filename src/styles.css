@@ -974,7 +974,8 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-cut-line { position: absolute; right: 0; left: 0; z-index: 5; height: 0; border-top: 2px solid #db3d42; pointer-events: none; }
 .wb-cut-line > span { position: absolute; top: 0; left: 7px; display: inline-flex; align-items: center; gap: 3px; color: #b82b31; background: #fff5f5ed; font-weight: 800; transform: translateY(-50%); }
 .wb-cut-line-label { padding: 2px 4px; font-size: 7px; }
-.wb-cut-line-handle { min-height: 32px; padding: 0 8px; border: 1px solid #e6aeb0; border-radius: 8px; box-shadow: 0 3px 9px #7b1d2130; font-size: 9px; pointer-events: auto; touch-action: none; user-select: none; cursor: ns-resize; }
+.wb-cut-line-handle { gap: 2px; min-height: 0; padding: 1px 4px; border: 0; border-radius: 0; background: #fff5f5d9; box-shadow: none; font-size: 7px; line-height: 1; pointer-events: auto; touch-action: none; user-select: none; cursor: ns-resize; }
+.wb-cut-line-handle::before { position: absolute; inset: -8px -7px; content: ''; }
 .wb-cut-line-handle:focus-visible { outline: 3px solid #b0151d35; outline-offset: 2px; }
 .wb-right-cut-line { position: absolute; top: 0; right: auto; bottom: 0; z-index: 6; width: 0; border-right: 2px solid #db3d42; pointer-events: none; }
 .wb-right-cut-line span { position: absolute; top: 8px; right: 3px; padding: 3px 1px; color: #b82b31; background: #fff5f5dc; font-size: 7px; font-weight: 800; line-height: 1; writing-mode: vertical-rl; }
