@@ -953,7 +953,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-lane-editor input { min-height: 34px; padding: 0 7px; border-radius: 8px; font-size: 9px; text-align: center; }
 .wb-designer-placeholder { margin-top: 12px; padding: 16px; border: 1px dashed #d7e1de; border-radius: 11px; color: #84938f; background: #fafcfb; font-size: 10px; text-align: center; }
 .wb-designer-empty { margin: 14px 20px 20px; }
-.wb-design-table { max-height: min(70vh, 360px); margin-top: 6px; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; scrollbar-gutter: stable both-edges; -webkit-overflow-scrolling: touch; }
+.wb-design-table { width: 100%; max-width: 100%; max-height: min(70vh, 360px); margin-top: 6px; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; scrollbar-gutter: stable both-edges; -webkit-overflow-scrolling: touch; }
 .wb-lane-labels { position: sticky; top: 0; z-index: 9; border: 1px solid #dfe7e4; border-bottom: 0; background: #f5f8f7; }
 .wb-lane-labels span { overflow: hidden; padding: 7px 4px; border-right: 1px solid #e1e7e5; color: #61736e; font-size: 8px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .wb-lane-labels span:last-child { border-right: 0; }
@@ -970,7 +970,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .wb-protein-zone { position: absolute; top: 0; right: 0; bottom: 0; }
 .wb-protein-band i { position: absolute; right: 0; left: 0; height: 7px; margin-top: -3px; background: #111b19; box-shadow: 0 1px 2px #0003; }
 .wb-protein-band small { position: absolute; top: 5px; left: 5px; z-index: 2; padding: 1px 4px; color: #283d38; background: #ffffffc9; font-size: 7px; font-weight: 750; }
-.wb-cut-line { position: absolute; right: 0; left: 0; z-index: 5; height: 15px; margin-top: -7px; border-top: 2px solid #db3d42; outline: 0; cursor: ns-resize; touch-action: none; }
+.wb-cut-line { position: absolute; right: 0; left: 0; z-index: 5; height: 15px; margin-top: -7px; border-top: 2px solid #db3d42; outline: 0; cursor: ns-resize; touch-action: pan-x; }
 .wb-cut-line.readonly { pointer-events: none; }
 .wb-cut-line:focus { border-top-color: #b0151d; box-shadow: 0 -2px 0 #ffffff, 0 -4px 0 #b0151d; }
 .wb-cut-line > span { position: absolute; top: -16px; right: 7px; display: flex; align-items: center; gap: 2px; padding: 1px 4px; color: #b82b31; background: #fff5f5d9; font-size: 7px; font-weight: 800; }
@@ -987,6 +987,7 @@ footer p { margin: 8px 0 0; font-size: 12px; }
 .setup-sticky-action button:disabled { opacity: .45; cursor: not-allowed; }
 .wb-guide-items { display: flex; flex-direction: column; gap: 10px; }
 .wb-guide-item { display: grid; grid-template-columns: 34px 1fr; gap: 11px; padding: 15px; border: 1px solid #e0e8e5; border-radius: 15px; background: #fbfcfc; }
+.wb-guide-item > div { min-width: 0; }
 .wb-guide-item.completed { border-color: #b9d9d2; background: #f3faf8; }
 .wb-step-check { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #cbdcd7; border-radius: 9px; color: #60736e; background: white; font-size: 10px; font-weight: 800; cursor: pointer; }
 .wb-guide-item.completed .wb-step-check { color: white; border-color: #16877c; background: #16877c; }
