@@ -454,10 +454,8 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
               const displayedLine = roundWesternBlotCutLinePosition(safeLine) ?? 0;
               return (
                 <div className="wb-cut-line-control" key={`cut-control-${index}`}>
-                  <span>切膜线 {index + 1}</span>
-                  <output aria-label={`切膜线 ${index + 1} 位置`}>{displayedLine}</output>
-                  <b>kDa</b>
-                  <button type="button" onClick={() => onDeleteCutLine(index)} aria-label={`删除切膜线 ${index + 1}`}><Trash2 size={14} /><span>删除</span></button>
+                  <span>切膜线 {index + 1}：<output aria-label={`切膜线 ${index + 1} 位置`}>{displayedLine} kDa</output></span>
+                  <button type="button" onClick={() => onDeleteCutLine(index)} aria-label={`删除切膜线 ${index + 1}`} title={`删除切膜线 ${index + 1}`}><Trash2 size={12} aria-hidden="true" /></button>
                 </div>
               );
             })}
@@ -798,7 +796,7 @@ export default function WesternBlotTool() {
                         cutLines: [...current.cutLines, Math.round(maximumWeight / 2)],
                       }))}
                     >
-                      <Plus size={15} />添加切膜线
+                      <Plus size={12} aria-hidden="true" />添加切膜线
                     </button>
                   </div>
                   <MarkerPlot
