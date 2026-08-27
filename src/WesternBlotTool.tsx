@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
   ArrowLeft,
@@ -339,19 +339,22 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
   const rightCutLinePosition = lastEffectiveLaneIndex >= 0
     ? ((lastEffectiveLaneIndex + 1) / plate.wellCount) * 100
     : 100;
+  const [plotScrollLeft, setPlotScrollLeft] = useState(0);
+  const dragOffsets = useRef(new Map<number, number>());
 
-  const updateFromPointer = (index: number, event: ReactPointerEvent<HTMLDivElement>) => {
-    const plot = event.currentTarget.parentElement;
+  const updateFromPointer = (index: number, event: ReactPointerEvent<HTMLSpanElement>) => {
+    const plot = event.currentTarget.closest('.wb-membrane-plot');
     if (!plot) return;
     const bounds = plot.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
+    const dragOffset = dragOffsets.current.get(event.pointerId) ?? 0;
+    const ratio = Math.min(1, Math.max(0, (event.clientY - dragOffset - bounds.top) / bounds.height));
     const molecularWeight = westernBlotReferencedPositionMolecularWeight(ratio * 100, marker.bands);
     if (molecularWeight !== null) onChangeCutLine(index, Math.round(molecularWeight));
   };
 
   return (
     <div className="wb-marker-plot">
-      <div className="wb-design-table">
+      <div className="wb-design-table" onScroll={(event) => setPlotScrollLeft(event.currentTarget.scrollLeft)}>
         <div className="wb-lane-labels" style={{ gridTemplateColumns: `repeat(${plate.wellCount}, minmax(74px, 1fr))` }}>
           {plate.laneLabels.map((label, index) => <span key={`lane-${index}`} title={label}>{label}</span>)}
         </div>
@@ -389,39 +392,49 @@ function MarkerPlot({ plate, proteins, onChangeCutLine, onDeleteCutLine, readOnl
           const safeLine = Math.min(maximumWeight, Math.max(0, line));
           const top = westernBlotReferencedMolecularWeightPosition(safeLine, marker.bands) ?? 50;
           if (readOnly) {
-            return <div className="wb-cut-line readonly" style={{ top: `${top}%` }} key={`cut-${index}`}><span>切膜线</span></div>;
+            return <div className="wb-cut-line readonly" style={{ top: `${top}%` }} key={`cut-${index}`}><span className="wb-cut-line-label">切膜线</span></div>;
           }
           return (
             <div
               className="wb-cut-line"
               style={{ top: `${top}%` }}
               key={`cut-${index}`}
-              role="slider"
-              tabIndex={0}
-              aria-label={`第 ${index + 1} 条切膜线`}
-              aria-valuemin={0}
-              aria-valuemax={maximumWeight}
-              aria-valuenow={safeLine}
-              onPointerDown={(event) => {
-                event.currentTarget.setPointerCapture(event.pointerId);
-                updateFromPointer(index, event);
-              }}
-              onPointerMove={(event) => {
-                if (event.currentTarget.hasPointerCapture(event.pointerId)) updateFromPointer(index, event);
-              }}
-              onKeyDown={(event) => {
-                const amount = event.shiftKey ? 5 : 1;
-                if (event.key === 'ArrowUp') {
-                  event.preventDefault();
-                  onChangeCutLine(index, Math.min(maximumWeight, safeLine + amount));
-                }
-                if (event.key === 'ArrowDown') {
-                  event.preventDefault();
-                  onChangeCutLine(index, Math.max(0, safeLine - amount));
-                }
-              }}
             >
-              <span><GripHorizontal size={12} />切膜线</span>
+              <span
+                className="wb-cut-line-handle"
+                style={{ left: `${plotScrollLeft + 8}px` }}
+                role="slider"
+                tabIndex={0}
+                aria-label={`第 ${index + 1} 条切膜线`}
+                aria-valuemin={0}
+                aria-valuemax={maximumWeight}
+                aria-valuenow={safeLine}
+                aria-valuetext={`${safeLine} kDa`}
+                aria-orientation="vertical"
+                onPointerDown={(event) => {
+                  const cutLine = event.currentTarget.parentElement;
+                  if (!cutLine) return;
+                  dragOffsets.current.set(event.pointerId, event.clientY - cutLine.getBoundingClientRect().top);
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => {
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) updateFromPointer(index, event);
+                }}
+                onLostPointerCapture={(event) => dragOffsets.current.delete(event.pointerId)}
+                onKeyDown={(event) => {
+                  const amount = event.shiftKey ? 5 : 1;
+                  if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    onChangeCutLine(index, Math.min(maximumWeight, safeLine + amount));
+                  }
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    onChangeCutLine(index, Math.max(0, safeLine - amount));
+                  }
+                }}
+              >
+                <GripHorizontal size={14} />切膜线
+              </span>
             </div>
           );
         })}
